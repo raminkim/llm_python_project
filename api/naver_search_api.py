@@ -12,9 +12,9 @@ if PROJECT_ROOT not in sys.path:
 from config.config import NAVER_API_CLIENT_ID
 from config.config import NAVER_API_CLIENT_SECRET
 
-def naver_search_api(keyword, x, y):
+def naver_search_api(keyword):
     enc_query = quote(keyword)  # 검색어를 URL 인코딩합니다.
-    url = f'https://openapi.naver.com/v1/search/local.json?query={enc_query}&display=5&x={x}&y={y}'
+    url = f'https://openapi.naver.com/v1/search/local.json?query={enc_query}&display=5'
     headers = {
          "X-Naver-Client-Id": NAVER_API_CLIENT_ID,
         "X-Naver-Client-Secret": NAVER_API_CLIENT_SECRET

@@ -1,9 +1,9 @@
-from api.kakaomap_rest_api import search_by_category
-from api.naver_search_api import naver_search_api
-from api.openAI_api import generate_answer
+from api import naver_search_api,openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
+
 from crawlers.get_review_content import parse_review_content, request_review_graphql
 from crawlers.get_review_content import request_place_id_graphql
 from embeddings_db.initialize_vector_db import initialize_vector_db
+from processing import analyze_sentiment, chunk_text, classify_length, clean_text, extract_keywords, get_embedding
 
 from config.config import OPENAI_API_KEY
 
@@ -14,7 +14,7 @@ from selenium.webdriver.chrome.options import Options
 
 import re
 
-from processing import analyze_sentiment, chunk_text, classify_length, clean_text, extract_keywords, get_embedding
+
 
 
 def review_to_json(reviews, chunk_size=300, overlap=50):
@@ -33,7 +33,7 @@ def review_to_json(reviews, chunk_size=300, overlap=50):
         review_index = f"review_{idx:03}"
         cleaned_text = clean_text.clean_text(review)
         text_length = classify_length.classify_length(cleaned_text)
-        sentiment = analyze_sentiment.analyze_sentiment(cleaned_text)
+        # sentiment = analyze_sentiment.analyze_sentiment(cleaned_text)
         keywords = extract_keywords.extract_keywords(cleaned_text)
         chunks = chunk_text.chunk_text(cleaned_text, chunk_size=chunk_size, overlap=overlap)
         embeddings = [get_embedding.get_embedding(client, chunk) for chunk in chunks]
@@ -42,7 +42,7 @@ def review_to_json(reviews, chunk_size=300, overlap=50):
             "index": review_index,
             "text": cleaned_text,
             "length": text_length,
-            "senitiment": sentiment,
+            # "senitiment": sentiment,
             "keywords": keywords,
             "chunks": [{"text": chunk, "embedding": embedding} for chunk, embedding in zip(chunks, embeddings)]
         }
@@ -62,13 +62,7 @@ if __name__ == "__main__":
 
     # search_result = search_by_category(127.743288, 37.872316, "FD6", 15)
 
-    search_result = search_by_category(127.948911, 37.350087, "FD6", 15)
-
-    # ChromeOptions 설정 및 WebDriver 초기화 (루프 외부에서 한 번만 수행)
-    chrome_options = Options()
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-    driver = webdriver.Chrome(options=chrome_options)
+    search_result = kakaomap_rest_api.search_by_category(127.948911, 37.350087, "FD6", 15)
 
     if search_result:
         print("춘천 주변 카페 검색 결과:")
@@ -78,22 +72,35 @@ if __name__ == "__main__":
             road_address_name = place.get('road_address_name')
             place_name = place.get('place_name')
 
-            print(road_address_name, place_name, x, y)
+            print(f'{road_address_name} {place_name}')
 
-            # 네이버 지역 검색 API 기준의 place name
-            for item in naver_search_api(place_name, x, y)['items']:
-                if road_address_name in item.get('roadAddress', ''):
-                    title = item['title']
-                    # <b></b> 등 html 태그 제거
-                    cleaned_title = re.sub(r"<[^>]+>", "", title)
-                    print(cleaned_title)
-                    break
+            # print(kakaomap_transfrom_address.transform_coordinates(x, y)['documents'][0])
+            
+            # 카카오 REST API를 이용해 좌표의 '시'를 받아오기. ex) 춘천시
+            region_2depth_name = kakaomap_transfrom_address.transform_coordinates(x, y)['documents'][0]['region_2depth_name']
 
-            place_id = request_place_id_graphql(cleaned_title, x, y)
+            # 카카오 REST API를 이용해 좌표의 '동'를 받아오기. ex) 명동
+            region_3depth_name = kakaomap_transfrom_address.transform_coordinates(x, y)['documents'][0]['region_3depth_name']
+
+
+            # 네이버 지역 검색 API 기준의 place name 받아오기
+            items = naver_search_api.naver_search_api(f'{region_2depth_name} {region_3depth_name} {place_name}')['items']
+
+            # items가 비어있다면, 검색 결과가 없는 것이므로 continue.
+            if not items:
+                print("naver 검색 api의 검색 결과가 없습니다.")
+                continue
+            
+            # <b></b> 등 html 태그 제거
+            place_name = re.sub(r"<[^>]+>", "", items[0]['title'])
+            print(place_name)
+
+            place_id = request_place_id_graphql(place_name, x, y)
             if place_id:
                 print(place_id)
             request_result = request_review_graphql(place_id)
             reviews = parse_review_content(request_result)
+            
             review_list = []
 
             for review in reviews:
@@ -124,7 +131,7 @@ if __name__ == "__main__":
         
         # 해당 장소에 특화된 분석 수행
         place_query = f"{place_name}의 {user_query}"
-        place_response = generate_answer(client, place_query, place_data)
+        place_response = openAI_api.generate_answer(client, place_query, place_data)
         
         print(f"\n[{place_name}]")
         print(place_response)
