@@ -144,6 +144,8 @@ def parse_review_content(json_data):
                 for review_item in visitor_reviews.get('items', []):
                     if 'body' in review_item:
                         reviews.append(review_item['body'])
+        
+        print("parse_review_content : ", reviews)
         return reviews
     except (json.JSONDecodeError, AttributeError, TypeError) as e:
         print(f"JSON 파싱 오류: {e}")
