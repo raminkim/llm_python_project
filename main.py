@@ -43,7 +43,7 @@ def review_to_json(reviews, client:OpenAI, chunk_size=300, overlap=50):
     return review_jsons
 
 
-async def process_category(category: str):
+async def process_category(category: str, x: float, y: float):
     """
     특정 카테고리에 대한 리뷰를 분석하고, 결과를 반환하는 함수이다.
     """
@@ -57,7 +57,9 @@ async def process_category(category: str):
     # search_result = search_by_category(127.743288, 37.872316, "FD6", 15)
 
 
-    search_result = kakaomap_rest_api.search_by_category(127.948911, 37.350087, "FD6", 15)
+    # search_result = kakaomap_rest_api.search_by_category(127.948911, 37.350087, "FD6", 15)
+
+    search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
     print("카카오맵 주변 카테고리 불러왔음.")
 
     if search_result:

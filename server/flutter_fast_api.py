@@ -8,9 +8,9 @@ async def root():
     return {"message": "Hello World"}
 
 @app.post("/list/{category}")
-async def read_list(category: str):
+async def read_list(category: str, x: float, y:float):
     """
     특정 카테고리에 대한 분석 결과를 반환하는 API 엔드포인트.
     """
-    results = await process_category(category)
+    results = await process_category(category, x, y)
     return results
