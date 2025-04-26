@@ -25,3 +25,65 @@
   - **OpenAI API KEY**
   - **KakaoMap API KEY**
   - **Naver API KEY**
+
+
+## 실행방법 방법
+### 1. 세팅
+
+(1) **환경 변수 파일 생성** : env_sample 파일을 복사해 .env 파일로 이름을 변경
+
+(2) **.env 파일의 API 키 채우기**
+
+### 2. 서버 실행 방법
+```bash
+uvicorn server.flutter_fast_api:app --reload
+```
+
+### 3. 서버 종료 방법
+`ctrl + c`
+
+
+## API 사용 방법 및 결과 예시
+### 특정 좌표 주변 특정 카테고리 장소의 리뷰 분석
+
+- 요청 예시
+```bash
+  curl -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"x": 127.743288, "y": 37.872316}' \
+    '[http://127.0.0.1:8000/list/FD6](http://127.0.0.1:8000/list/FD6)'
+```
+
+- 응답 예시
+```bash
+  [
+    {
+        "store_name": "육림객잔",
+        "positive_rate": 90,
+        "negative_rate": 10
+    },
+    {
+        "store_name": "진미닭갈비 본점",
+        "positive_rate": 85,
+        "negative_rate": 15
+    },
+    {
+        "store_name": "1.5닭갈비 본점",
+        "positive_rate": 80,
+        "negative_rate": 20
+    },
+        ... (중략)
+    {
+        "store_name": "돌다리야채곱창",
+        "positive_rate": 80,
+        "negative_rate": 20
+    },
+    {
+        "store_name": "단하비",
+        "positive_rate": 95,
+        "negative_rate": 5
+    }
+]
+```
+
+
