@@ -9,50 +9,128 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# 상수 정의
+DEFAULT_TIMEOUT = 10
+IFRAME_IDS = {
+    'search': 'searchIframe',
+    'entry': 'entryIframe'
+}
+
+def switch_to_iframe(driver, iframe_type, timeout=DEFAULT_TIMEOUT):
+    """
+    지정된 iframe으로 전환하는 유틸리티 함수
+    
+    Args:
+        driver: WebDriver 인스턴스
+        iframe_type: 'search' 또는 'entry'
+        timeout: 타임아웃 시간 (초)
+    
+    Returns:
+        bool: iframe 전환 성공 여부
+    """
+    try:
+        iframe_id = IFRAME_IDS.get(iframe_type)
+        if not iframe_id:
+            raise ValueError(f"Unknown iframe type: {iframe_type}")
+            
+        WebDriverWait(driver, timeout).until(
+            EC.frame_to_be_available_and_switch_to_it((By.ID, iframe_id))
+        )
+        print(f"{iframe_id}으로 전환 완료.")
+        return True
+    except TimeoutException:
+        print(f"{iframe_id} 전환 실패: 타임아웃")
+        return False
+    except Exception as e:
+        print(f"{iframe_id} 전환 중 오류 발생: {e}")
+        return False
+
 def search_iframe(driver):
     try:
-        # searchIframe이 로드될 때까지 대기
-        WebDriverWait(driver, 10).until(
-            EC.frame_to_be_available_and_switch_to_it((By.ID, "searchIframe"))
-        )
+        # searchIframe으로 전환
+        if not switch_to_iframe(driver, 'search'):
+            return "single"
+            
         # 검색 결과가 하나인지 여러개인지 확인
         if driver.find_elements(By.CSS_SELECTOR, "div#_pcmap_list_scroll_container > ul > li"):
             return "multi"
         else:
             return "single"
-    except TimeoutException:
-        return "single"
     except Exception as e:
         print(f"iframe 검색 중 오류 발생: {e}")
         return "single"
 
 def extract_place_id(keyword, driver):
-    logs = driver.get_log('performance')
-    print(f"수집된 로그 수: {len(logs)}")
+    """
+    네이버 지도에서 장소 ID를 추출하는 함수
     
-    patterns = [
-        r'/p/api/nplace/marker/(\d+)',
-        r'home\?from=map.*?&id=(\d+)',
-        r'place/(\d+)',
-        r'restaurant/(\d+)'
-    ]
+    Args:
+        keyword: 검색 키워드
+        driver: WebDriver 인스턴스
     
-    for log in logs:
-        message = json.loads(log['message'])['message']
-        if message['method'] == 'Network.requestWillBeSent':
-            request = message['params']['request']
-            url = request['url']
+    Returns:
+        str or None: 추출된 장소 ID 또는 None
+    """
+    # 장소 ID를 추출하기 위한 URL 패턴 정의
+    # 각 패턴은 네이버 지도에서 사용되는 다양한 URL 형식을 커버
+    PLACE_ID_PATTERNS = {
+        'marker': r'/p/api/nplace/marker/(\d+)',      # 마커 API에서 사용되는 ID 패턴
+        'home': r'home\?from=map.*?&id=(\d+)',        # 홈페이지 URL에서 사용되는 ID 패턴
+        'place': r'place/(\d+)',                      # 일반 장소 URL에서 사용되는 ID 패턴
+        'restaurant': r'restaurant/(\d+)'             # 음식점 URL에서 사용되는 ID 패턴
+    }
+    
+    # 로그 필터링을 위한 조건 설정
+    # Network.requestWillBeSent 메시지만 필터링하여 필요한 로그만 처리
+    log_filter = {
+        'level': 'INFO',
+        'message': {
+            'method': 'Network.requestWillBeSent'
+        }
+    }
+    
+    try:
+        # 1. 성능 로그 가져오기
+        logs = driver.get_log('performance')
+        filtered_logs = []
+        
+        # 2. 로그 필터링 및 파싱
+        for log in logs:
+            try:
+                # JSON 형식의 로그 메시지 파싱
+                message = json.loads(log['message'])['message']
+                
+                # Network.requestWillBeSent 메시지이고 URL이 있는 경우만 필터링
+                if (message.get('method') == 'Network.requestWillBeSent' and 
+                    'params' in message and 
+                    'request' in message['params'] and 
+                    'url' in message['params']['request']):
+                    filtered_logs.append(message)
+            except (json.JSONDecodeError, KeyError):
+                # JSON 파싱 오류나 키 오류는 무시하고 다음 로그 처리
+                continue
+        
+        # 3. 필터링된 로그에서 장소 ID 추출
+        for log in filtered_logs:
+            url = log['params']['request']['url']
             
-            for pattern in patterns:
+            # 각 패턴에 대해 매칭 시도
+            for pattern_name, pattern in PLACE_ID_PATTERNS.items():
                 match = re.search(pattern, url)
                 if match:
                     place_id = match.group(1)
+                    print(f"장소 ID 추출 성공 (패턴: {pattern_name}): {place_id}")
                     return place_id
-    
-    print("place_id를 찾을 수 없습니다.")
-    print("수동으로 확인해 보세요: 개발자 도구 → Network 탭 → 'nplace' 또는 'marker' 검색")
-    return None
-
+        
+        # 4. 장소 ID를 찾지 못한 경우
+        print("장소 ID를 찾을 수 없습니다.")
+        print("수동으로 확인해 보세요: 개발자 도구 → Network 탭 → 'nplace' 또는 'marker' 검색")
+        return None
+        
+    except Exception as e:
+        # 5. 예상치 못한 오류 처리
+        print(f"장소 ID 추출 중 오류 발생: {e}")
+        return None
 
 def request_review_graphql(place_id):
     url = 'https://api.place.naver.com/graphql'
@@ -162,33 +240,25 @@ def get_review_content(keyword: str, driver) -> list:
         print("다중 검색 결과입니다.")
         
         try:
-            WebDriverWait(driver, 10).until(
-                EC.frame_to_be_available_and_switch_to_it((By.ID, "searchIframe"))
-            )
+            # searchIframe으로 전환
+            if not switch_to_iframe(driver, 'search'):
+                return []
             
-            print("searchIframe으로 전환 완료.")
-            
-            first_result = WebDriverWait(driver, 10).until(
+            first_result = WebDriverWait(driver, DEFAULT_TIMEOUT).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "div#_pcmap_list_scroll_container > ul > li:first-child a.ApCpt.k4f_J"))
             )
             
             driver.execute_script("arguments[0].scrollIntoView(true);", first_result)
-            WebDriverWait(driver, 5).until(EC.element_to_be_clickable(first_result)) # 클릭 가능성 재확인
+            WebDriverWait(driver, 5).until(EC.element_to_be_clickable(first_result))
             
             driver.execute_script("arguments[0].click();", first_result)
             print("첫 번째 검색 결과를 클릭했습니다.")
             
             driver.switch_to.default_content()
             
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "entryIframe"))
-            )
-            
-            WebDriverWait(driver, 10).until(
-                EC.frame_to_be_available_and_switch_to_it((By.ID, "entryIframe"))
-            )
-            
-            print("entryIframe으로 전환 완료.")
+            # entryIframe으로 전환
+            if not switch_to_iframe(driver, 'entry'):
+                return []
         
         except TimeoutException:
             print("검색 결과를 찾을 수 없습니다.")

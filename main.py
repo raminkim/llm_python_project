@@ -9,6 +9,7 @@ from config.config import OPENAI_API_KEY
 from openai import OpenAI
 
 import re
+import time
 
 def review_to_json(reviews, client:OpenAI, chunk_size=300, overlap=50):
     """
@@ -165,10 +166,20 @@ async def process_category(category: str, x: float, y: float):
 
 
 if __name__ == "__main__":
+    import time
+    start_time = time.time()
+    
     # FastAPI 서버가 아닌, 직접 실행 시의 동작 (예: 테스트, 백그라운드 작업)
     async def main_script():
-        result = await process_category("FD6")
-        print("직접 실행 결과:", result)
+        try:
+            result = await process_category("FD6", 127.743288, 37.872316)
+            print("직접 실행 결과:", result)
+        except Exception as e:
+            print(f"실행 중 오류 발생: {e}")
 
     import asyncio
     asyncio.run(main_script())
+    
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"\n총 실행 시간: {execution_time:.2f}초")
