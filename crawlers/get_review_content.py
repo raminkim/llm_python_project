@@ -223,7 +223,7 @@ def parse_review_content(json_data):
                     if 'body' in review_item:
                         reviews.append(review_item['body'])
         
-        print("parse_review_content : ", reviews)
+        # print("parse_review_content : ", reviews)
         return reviews
     except (json.JSONDecodeError, AttributeError, TypeError) as e:
         print(f"JSON 파싱 오류: {e}")
@@ -266,3 +266,41 @@ def get_review_content(keyword: str, driver) -> list:
             print(f"오류 발생: {e}")
             driver.switch_to.default_content()
     
+
+
+if __name__ == '__main__':
+    place_id = "37127882"
+
+    url = 'https://api.place.naver.com/graphql'
+    headers = {
+        'accept': '*/*',
+        'accept-language': 'ko',
+        'content-type': 'application/json',
+        'dnt': '1',
+        'origin': 'https://pcmap.place.naver.com',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.31.304.16 Safari/537.36',
+    }
+    payload = [{
+        "operationName": "getVisitorReviews",
+        "variables": {
+            "input": {
+                "businessId": place_id,
+                "businessType": "restaurant",
+                "item": "0",
+                "page": 5,
+                "size": 10,
+                "isPhotoUsed": False,
+                "sort": "recent",
+                "includeContent": True,
+                "getUserStats": True,
+                "includeReceiptPhotos": True,
+                "cidList": ["220036", "220051", "220552", "221043"],
+                "getReactions": True,
+                "getTrailer": True
+            }
+        },
+        "query": "query getVisitorReviews($input: VisitorReviewsInput) {\n  visitorReviews(input: $input) {\n    items {\n      id\n      reviewId\n      rating\n      author {\n        id\n        nickname\n        from\n        imageUrl\n        borderImageUrl\n        objectId\n        url\n        review {\n          totalCount\n          imageCount\n          avgRating\n          __typename\n        }\n        theme {\n          totalCount\n          __typename\n        }\n        isFollowing\n        followerCount\n        followRequested\n        __typename\n      }\n      body\n      thumbnail\n      media {\n        type\n        thumbnail\n        thumbnailRatio\n        class\n        videoId\n        videoUrl\n        trailerUrl\n        __typename\n      }\n      tags\n      status\n      visitCount\n      viewCount\n      visited\n      created\n      reply {\n        editUrl\n        body\n        editedBy\n        created\n        date\n        replyTitle\n        isReported\n        isSuspended\n        status\n        __typename\n      }\n      originType\n      item {\n        name\n        code\n        options\n        __typename\n      }\n      language\n      highlightRanges {\n        start\n        end\n        __typename\n      }\n      apolloCacheId\n      translatedText\n      businessName\n      showBookingItemName\n      bookingItemName\n      votedKeywords {\n        code\n        iconUrl\n        iconCode\n        name\n        __typename\n      }\n      userIdno\n      loginIdno\n      receiptInfoUrl\n      reactionStat {\n        id\n        typeCount {\n          name\n          count\n          __typename\n        }\n        totalCount\n        __typename\n      }\n      hasViewerReacted {\n        id\n        reacted\n        __typename\n      }\n      nickname\n      showPaymentInfo\n      visitCategories {\n        code\n        name\n        keywords {\n          code\n          name\n          __typename\n        }\n        __typename\n      }\n      representativeVisitDateTime\n      showRepresentativeVisitDateTime\n      __typename\n    }\n    starDistribution {\n      score\n      count\n      __typename\n    }\n    hideProductSelectBox\n    total\n    showRecommendationSort\n    itemReviewStats {\n      score\n      count\n      itemId\n      starDistribution {\n        score\n        count\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+    }]
+
+    response = requests.post(url, headers=headers, json=payload)
+    print(response.json)

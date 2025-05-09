@@ -1,6 +1,7 @@
 from api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
 from crawlers.get_review_content import parse_review_content, request_review_graphql
 from crawlers.get_review_content import request_place_id_graphql
+from processing.review_to_json import review_to_json
 from embeddings_db.initialize_vector_db import initialize_vector_db
 from processing import chunk_text, classify_length, clean_text, get_embedding
 
@@ -10,38 +11,6 @@ from openai import OpenAI
 
 import re
 import time
-
-def review_to_json(reviews, client:OpenAI, chunk_size=300, overlap=50):
-    """
-        리뷰 데이터를 JSON 형식으로 변환하는 함수.
-        Args:
-            reviews (list): 리뷰 텍스트 리스트.
-            client (OpenAI): OpenAI 객체.
-            chunk_size (int): 각 청크의 최대 단어 수.
-            overlap (int): 청크 간 겹치는 단어 수.
-
-        Returns:
-            list: JSON 형식의 리뷰 데이터 리스트.
-    """
-    review_jsons = []
-
-    for idx, review in enumerate(reviews, start=1):
-        review_index = f"review_{idx:03}"
-        cleaned_text = clean_text.clean_text(review)
-        text_length = classify_length.classify_length(cleaned_text)
-        chunks = chunk_text.chunk_text(cleaned_text, chunk_size=chunk_size, overlap=overlap)
-        embeddings = [get_embedding.get_embedding(client, chunk) for chunk in chunks]
-
-        review_json = {
-            "index": review_index,
-            "text": cleaned_text,
-            "length": text_length,
-            "chunks": [{"text": chunk, "embedding": embedding} for chunk, embedding in zip(chunks, embeddings)]
-        }
-
-        review_jsons.append(review_json)
-
-    return review_jsons
 
 
 async def process_category(category: str, x: float, y: float):
@@ -56,8 +25,6 @@ async def process_category(category: str, x: float, y: float):
     all_places_reviews = []
 
     # search_result = search_by_category(127.743288, 37.872316, "FD6", 15)
-
-
     # search_result = kakaomap_rest_api.search_by_category(127.948911, 37.350087, "FD6", 15)
 
     search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
