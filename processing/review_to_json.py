@@ -8,7 +8,10 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
     
-from processing import clean_text, classify_length, chunk_text, get_embedding
+from processing.clean_text import clean_text
+from processing.classify_length import classify_length
+from processing.chunk_text import chunk_text
+from processing.get_embedding import get_embedding
 
 async def async_review_to_json(reviews, client:OpenAI, chunk_size=100, overlap=20):
     """
@@ -25,9 +28,9 @@ async def async_review_to_json(reviews, client:OpenAI, chunk_size=100, overlap=2
     async def process_single_review(review, idx):
         try:
             review_index = f"review_{idx:03}"
-            cleaned_text = clean_text.clean_text(review)
-            text_length = classify_length.classify_length(cleaned_text)
-            chunks = chunk_text.chunk_text(cleaned_text, chunk_size=chunk_size, overlap=overlap)
+            cleaned_text = clean_text(review)
+            text_length = classify_length(cleaned_text)
+            chunks = chunk_text(cleaned_text, chunk_size=chunk_size, overlap=overlap)
 
             print(f"chunks: {chunks}")
             
@@ -35,8 +38,12 @@ async def async_review_to_json(reviews, client:OpenAI, chunk_size=100, overlap=2
                 print(f"Warning: No chunks created for review {idx}")
                 return None
 
-            # 임베딩 생성
-            embeddings = [get_embedding.get_embedding(client, chunk) for chunk in chunks]
+            # asyncio.to_thread를 사용하여 동기 함수를 비동기적으로 실행
+            embedding_tasks = [
+                asyncio.to_thread(get_embedding, client, chunk)
+                for chunk in chunks
+            ]
+            embeddings = await asyncio.gather(*embedding_tasks)
 
             return {
                 "index": review_index,

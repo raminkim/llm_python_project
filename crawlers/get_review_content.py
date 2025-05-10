@@ -1,3 +1,4 @@
+import asyncio
 import time
 import json
 import re
@@ -172,26 +173,6 @@ async def async_request_review_graphql(place_id):
                 print(f"graphql 요청 실패: {response.status}")
                 return None
     
-    # try:
-    #     response = requests.post(url, headers=headers, json=payload)
-    #     response.raise_for_status()
-    #     print("요청 성공!")
-    #     print("상태 코드:", response.status_code)
-    #     try:
-    #         print("응답 내용 (JSON):")
-    #         json_data = response.json()  # 응답 JSON을 파싱하여 json_data 변수에 할당
-    #         return response.json()  # JSON 데이터를 Python 딕셔너리로 반환
-    #     except json.JSONDecodeError:
-    #         print("응답 내용 (Text):")
-    #         print(response.text)
-    #         return None
-    # except requests.exceptions.RequestException as e:
-    #     print(f"요청 실패: {e}")
-    #     if e.response is not None:
-    #         print(f"에러 상태 코드: {e.response.status_code}")
-    #         print(f"에러 응답 내용: {e.response.text}")
-    #     return None
-    
 async def async_request_place_id_graphql(keyword: str, x, y):
     url = 'https://map.naver.com/p/api/search/instant-search'
     params = {
@@ -211,22 +192,16 @@ async def async_request_place_id_graphql(keyword: str, x, y):
             if response.status == 200:
                 data = await response.json()
                 for place in data["place"]:
+                    print(f"place: {place}")
                     return place["id"]
             else:
                 print(f"place_id 요청 실패: {response.status}")
                 return None
 
-    # response = requests.get(url, params=params, headers=headers)
-    # print("상태 코드:", response.status_code)
-    # if response.status_code == 200:
-    #     for place in response.json()["place"]:
-    #         return place["id"]
-    
-def parse_review_content(json_data):
+
+async def async_parse_review_content(json_data):
     """JSON 데이터에서 리뷰 내용을 추출하는 함수."""
     try:
-        # json_data가 이미 파이썬 객체인지 확인하고,
-        # 문자열이 아니라면 그대로 사용
         if not isinstance(json_data, str):
             data = json_data
         else:
@@ -242,48 +217,10 @@ def parse_review_content(json_data):
                     if 'body' in review_item:
                         reviews.append(review_item['body'])
         
-        # print("parse_review_content : ", reviews)
         return reviews
     except (json.JSONDecodeError, AttributeError, TypeError) as e:
         print(f"JSON 파싱 오류: {e}")
         return []
-
-def get_review_content(keyword: str, driver) -> list:
-    driver.get(f"https://map.naver.com/v5/search/{keyword}")
-    
-    result_status = search_iframe(driver)
-
-    if result_status == "single":
-        print("단일 검색 결과입니다.")
-    elif result_status == "multi":
-        print("다중 검색 결과입니다.")
-        
-        try:
-            # searchIframe으로 전환
-            if not switch_to_iframe(driver, 'search'):
-                return []
-            
-            first_result = WebDriverWait(driver, DEFAULT_TIMEOUT).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "div#_pcmap_list_scroll_container > ul > li:first-child a.ApCpt.k4f_J"))
-            )
-            
-            driver.execute_script("arguments[0].scrollIntoView(true);", first_result)
-            WebDriverWait(driver, 5).until(EC.element_to_be_clickable(first_result))
-            
-            driver.execute_script("arguments[0].click();", first_result)
-            print("첫 번째 검색 결과를 클릭했습니다.")
-            
-            driver.switch_to.default_content()
-            
-            # entryIframe으로 전환
-            if not switch_to_iframe(driver, 'entry'):
-                return []
-        
-        except TimeoutException:
-            print("검색 결과를 찾을 수 없습니다.")
-        except Exception as e:
-            print(f"오류 발생: {e}")
-            driver.switch_to.default_content()
     
 
 
