@@ -1,6 +1,8 @@
+import asyncio
 import time
 import json
 import re
+import aiohttp
 import requests
 
 
@@ -132,7 +134,7 @@ def extract_place_id(keyword, driver):
         print(f"장소 ID 추출 중 오류 발생: {e}")
         return None
 
-def request_review_graphql(place_id):
+async def async_request_review_graphql(place_id):
     url = 'https://api.place.naver.com/graphql'
     headers = {
         'accept': '*/*',
@@ -163,27 +165,15 @@ def request_review_graphql(place_id):
         },
         "query": "query getVisitorReviews($input: VisitorReviewsInput) {\n  visitorReviews(input: $input) {\n    items {\n      id\n      reviewId\n      rating\n      author {\n        id\n        nickname\n        from\n        imageUrl\n        borderImageUrl\n        objectId\n        url\n        review {\n          totalCount\n          imageCount\n          avgRating\n          __typename\n        }\n        theme {\n          totalCount\n          __typename\n        }\n        isFollowing\n        followerCount\n        followRequested\n        __typename\n      }\n      body\n      thumbnail\n      media {\n        type\n        thumbnail\n        thumbnailRatio\n        class\n        videoId\n        videoUrl\n        trailerUrl\n        __typename\n      }\n      tags\n      status\n      visitCount\n      viewCount\n      visited\n      created\n      reply {\n        editUrl\n        body\n        editedBy\n        created\n        date\n        replyTitle\n        isReported\n        isSuspended\n        status\n        __typename\n      }\n      originType\n      item {\n        name\n        code\n        options\n        __typename\n      }\n      language\n      highlightRanges {\n        start\n        end\n        __typename\n      }\n      apolloCacheId\n      translatedText\n      businessName\n      showBookingItemName\n      bookingItemName\n      votedKeywords {\n        code\n        iconUrl\n        iconCode\n        name\n        __typename\n      }\n      userIdno\n      loginIdno\n      receiptInfoUrl\n      reactionStat {\n        id\n        typeCount {\n          name\n          count\n          __typename\n        }\n        totalCount\n        __typename\n      }\n      hasViewerReacted {\n        id\n        reacted\n        __typename\n      }\n      nickname\n      showPaymentInfo\n      visitCategories {\n        code\n        name\n        keywords {\n          code\n          name\n          __typename\n        }\n        __typename\n      }\n      representativeVisitDateTime\n      showRepresentativeVisitDateTime\n      __typename\n    }\n    starDistribution {\n      score\n      count\n      __typename\n    }\n    hideProductSelectBox\n    total\n    showRecommendationSort\n    itemReviewStats {\n      score\n      count\n      itemId\n      starDistribution {\n        score\n        count\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
     }]
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        print("요청 성공!")
-        print("상태 코드:", response.status_code)
-        try:
-            print("응답 내용 (JSON):")
-            json_data = response.json()  # 응답 JSON을 파싱하여 json_data 변수에 할당
-            return response.json()  # JSON 데이터를 Python 딕셔너리로 반환
-        except json.JSONDecodeError:
-            print("응답 내용 (Text):")
-            print(response.text)
-            return None
-    except requests.exceptions.RequestException as e:
-        print(f"요청 실패: {e}")
-        if e.response is not None:
-            print(f"에러 상태 코드: {e.response.status_code}")
-            print(f"에러 응답 내용: {e.response.text}")
-        return None
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=payload) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                print(f"graphql 요청 실패: {response.status}")
+                return None
     
-def request_place_id_graphql(keyword: str, x, y):
+async def async_request_place_id_graphql(keyword: str, x, y):
     url = 'https://map.naver.com/p/api/search/instant-search'
     params = {
     'query': keyword,
@@ -197,17 +187,21 @@ def request_place_id_graphql(keyword: str, x, y):
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.31.304.16 Safari/537.36'
     }
 
-    response = requests.get(url, params=params, headers=headers)
-    print("상태 코드:", response.status_code)
-    if response.status_code == 200:
-        for place in response.json()["place"]:
-            return place["id"]
-    
-def parse_review_content(json_data):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params, headers=headers) as response:
+            if response.status == 200:
+                data = await response.json()
+                for place in data["place"]:
+                    print(f"place: {place}")
+                    return place["id"]
+            else:
+                print(f"place_id 요청 실패: {response.status}")
+                return None
+
+
+async def async_parse_review_content(json_data):
     """JSON 데이터에서 리뷰 내용을 추출하는 함수."""
     try:
-        # json_data가 이미 파이썬 객체인지 확인하고,
-        # 문자열이 아니라면 그대로 사용
         if not isinstance(json_data, str):
             data = json_data
         else:
@@ -223,48 +217,10 @@ def parse_review_content(json_data):
                     if 'body' in review_item:
                         reviews.append(review_item['body'])
         
-        # print("parse_review_content : ", reviews)
         return reviews
     except (json.JSONDecodeError, AttributeError, TypeError) as e:
         print(f"JSON 파싱 오류: {e}")
         return []
-
-def get_review_content(keyword: str, driver) -> list:
-    driver.get(f"https://map.naver.com/v5/search/{keyword}")
-    
-    result_status = search_iframe(driver)
-
-    if result_status == "single":
-        print("단일 검색 결과입니다.")
-    elif result_status == "multi":
-        print("다중 검색 결과입니다.")
-        
-        try:
-            # searchIframe으로 전환
-            if not switch_to_iframe(driver, 'search'):
-                return []
-            
-            first_result = WebDriverWait(driver, DEFAULT_TIMEOUT).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "div#_pcmap_list_scroll_container > ul > li:first-child a.ApCpt.k4f_J"))
-            )
-            
-            driver.execute_script("arguments[0].scrollIntoView(true);", first_result)
-            WebDriverWait(driver, 5).until(EC.element_to_be_clickable(first_result))
-            
-            driver.execute_script("arguments[0].click();", first_result)
-            print("첫 번째 검색 결과를 클릭했습니다.")
-            
-            driver.switch_to.default_content()
-            
-            # entryIframe으로 전환
-            if not switch_to_iframe(driver, 'entry'):
-                return []
-        
-        except TimeoutException:
-            print("검색 결과를 찾을 수 없습니다.")
-        except Exception as e:
-            print(f"오류 발생: {e}")
-            driver.switch_to.default_content()
     
 
 
