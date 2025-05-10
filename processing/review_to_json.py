@@ -1,4 +1,16 @@
-def review_to_json(reviews, client:OpenAI, chunk_size=300, overlap=50):
+import asyncio
+import os
+import sys
+from openai import OpenAI
+
+# 프로젝트 루트 디렉토리를 sys.path에 추가
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
+    
+from processing import clean_text, classify_length, chunk_text, get_embedding
+
+async def async_review_to_json(reviews, client:OpenAI, chunk_size=100, overlap=20):
     """
         리뷰 데이터를 JSON 형식으로 변환하는 함수.
         Args:
@@ -10,22 +22,32 @@ def review_to_json(reviews, client:OpenAI, chunk_size=300, overlap=50):
         Returns:
             list: JSON 형식의 리뷰 데이터 리스트.
     """
-    review_jsons = []
+    async def process_single_review(review, idx):
+        try:
+            review_index = f"review_{idx:03}"
+            cleaned_text = clean_text.clean_text(review)
+            text_length = classify_length.classify_length(cleaned_text)
+            chunks = chunk_text.chunk_text(cleaned_text, chunk_size=chunk_size, overlap=overlap)
 
-    for idx, review in enumerate(reviews, start=1):
-        review_index = f"review_{idx:03}"
-        cleaned_text = clean_text.clean_text(review)
-        text_length = classify_length.classify_length(cleaned_text)
-        chunks = chunk_text.chunk_text(cleaned_text, chunk_size=chunk_size, overlap=overlap)
-        embeddings = [get_embedding.get_embedding(client, chunk) for chunk in chunks]
+            print(f"chunks: {chunks}")
+            
+            if not chunks:
+                print(f"Warning: No chunks created for review {idx}")
+                return None
 
-        review_json = {
-            "index": review_index,
-            "text": cleaned_text,
-            "length": text_length,
-            "chunks": [{"text": chunk, "embedding": embedding} for chunk, embedding in zip(chunks, embeddings)]
-        }
+            # 임베딩 생성
+            embeddings = [get_embedding.get_embedding(client, chunk) for chunk in chunks]
 
-        review_jsons.append(review_json)
+            return {
+                "index": review_index,
+                "text": cleaned_text,
+                "length": text_length,
+                "chunks": [{"text": chunk, "embedding": embedding} for chunk, embedding in zip(chunks, embeddings)]
+            }
+        except Exception as e:
+            print(f"Error processing review {idx}: {e}")
+            return None
 
-    return review_jsons
+    tasks = [process_single_review(review, idx) for idx, review in enumerate(reviews, start=1)]
+    results = await asyncio.gather(*tasks)
+    return [result for result in results if result is not None]  # None이 아닌 결과만 반환

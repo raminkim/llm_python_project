@@ -1,6 +1,7 @@
 import time
 import json
 import re
+import aiohttp
 import requests
 
 
@@ -132,7 +133,7 @@ def extract_place_id(keyword, driver):
         print(f"장소 ID 추출 중 오류 발생: {e}")
         return None
 
-def request_review_graphql(place_id):
+async def async_request_review_graphql(place_id):
     url = 'https://api.place.naver.com/graphql'
     headers = {
         'accept': '*/*',
@@ -163,27 +164,35 @@ def request_review_graphql(place_id):
         },
         "query": "query getVisitorReviews($input: VisitorReviewsInput) {\n  visitorReviews(input: $input) {\n    items {\n      id\n      reviewId\n      rating\n      author {\n        id\n        nickname\n        from\n        imageUrl\n        borderImageUrl\n        objectId\n        url\n        review {\n          totalCount\n          imageCount\n          avgRating\n          __typename\n        }\n        theme {\n          totalCount\n          __typename\n        }\n        isFollowing\n        followerCount\n        followRequested\n        __typename\n      }\n      body\n      thumbnail\n      media {\n        type\n        thumbnail\n        thumbnailRatio\n        class\n        videoId\n        videoUrl\n        trailerUrl\n        __typename\n      }\n      tags\n      status\n      visitCount\n      viewCount\n      visited\n      created\n      reply {\n        editUrl\n        body\n        editedBy\n        created\n        date\n        replyTitle\n        isReported\n        isSuspended\n        status\n        __typename\n      }\n      originType\n      item {\n        name\n        code\n        options\n        __typename\n      }\n      language\n      highlightRanges {\n        start\n        end\n        __typename\n      }\n      apolloCacheId\n      translatedText\n      businessName\n      showBookingItemName\n      bookingItemName\n      votedKeywords {\n        code\n        iconUrl\n        iconCode\n        name\n        __typename\n      }\n      userIdno\n      loginIdno\n      receiptInfoUrl\n      reactionStat {\n        id\n        typeCount {\n          name\n          count\n          __typename\n        }\n        totalCount\n        __typename\n      }\n      hasViewerReacted {\n        id\n        reacted\n        __typename\n      }\n      nickname\n      showPaymentInfo\n      visitCategories {\n        code\n        name\n        keywords {\n          code\n          name\n          __typename\n        }\n        __typename\n      }\n      representativeVisitDateTime\n      showRepresentativeVisitDateTime\n      __typename\n    }\n    starDistribution {\n      score\n      count\n      __typename\n    }\n    hideProductSelectBox\n    total\n    showRecommendationSort\n    itemReviewStats {\n      score\n      count\n      itemId\n      starDistribution {\n        score\n        count\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
     }]
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        print("요청 성공!")
-        print("상태 코드:", response.status_code)
-        try:
-            print("응답 내용 (JSON):")
-            json_data = response.json()  # 응답 JSON을 파싱하여 json_data 변수에 할당
-            return response.json()  # JSON 데이터를 Python 딕셔너리로 반환
-        except json.JSONDecodeError:
-            print("응답 내용 (Text):")
-            print(response.text)
-            return None
-    except requests.exceptions.RequestException as e:
-        print(f"요청 실패: {e}")
-        if e.response is not None:
-            print(f"에러 상태 코드: {e.response.status_code}")
-            print(f"에러 응답 내용: {e.response.text}")
-        return None
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=payload) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                print(f"graphql 요청 실패: {response.status}")
+                return None
     
-def request_place_id_graphql(keyword: str, x, y):
+    # try:
+    #     response = requests.post(url, headers=headers, json=payload)
+    #     response.raise_for_status()
+    #     print("요청 성공!")
+    #     print("상태 코드:", response.status_code)
+    #     try:
+    #         print("응답 내용 (JSON):")
+    #         json_data = response.json()  # 응답 JSON을 파싱하여 json_data 변수에 할당
+    #         return response.json()  # JSON 데이터를 Python 딕셔너리로 반환
+    #     except json.JSONDecodeError:
+    #         print("응답 내용 (Text):")
+    #         print(response.text)
+    #         return None
+    # except requests.exceptions.RequestException as e:
+    #     print(f"요청 실패: {e}")
+    #     if e.response is not None:
+    #         print(f"에러 상태 코드: {e.response.status_code}")
+    #         print(f"에러 응답 내용: {e.response.text}")
+    #     return None
+    
+async def async_request_place_id_graphql(keyword: str, x, y):
     url = 'https://map.naver.com/p/api/search/instant-search'
     params = {
     'query': keyword,
@@ -197,11 +206,21 @@ def request_place_id_graphql(keyword: str, x, y):
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.31.304.16 Safari/537.36'
     }
 
-    response = requests.get(url, params=params, headers=headers)
-    print("상태 코드:", response.status_code)
-    if response.status_code == 200:
-        for place in response.json()["place"]:
-            return place["id"]
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params, headers=headers) as response:
+            if response.status == 200:
+                data = await response.json()
+                for place in data["place"]:
+                    return place["id"]
+            else:
+                print(f"place_id 요청 실패: {response.status}")
+                return None
+
+    # response = requests.get(url, params=params, headers=headers)
+    # print("상태 코드:", response.status_code)
+    # if response.status_code == 200:
+    #     for place in response.json()["place"]:
+    #         return place["id"]
     
 def parse_review_content(json_data):
     """JSON 데이터에서 리뷰 내용을 추출하는 함수."""
