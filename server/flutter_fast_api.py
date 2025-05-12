@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from main import process_category
 import pymysql as sql
-from config.config import DB_PASSWORD
+import os
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -9,7 +9,7 @@ app = FastAPI()
 conn = sql.connect(
     host='127.0.0.1',
     user='root',
-    password=DB_PASSWORD,
+    password=os.getenv("DB_PASSWORD"),
     database='route_recommendation',
     charset='utf8mb4',
 )
@@ -29,7 +29,7 @@ app.add_middleware(
 cursor = conn.cursor()
 @app.get("/")
 async def root():
-    print(DB_PASSWORD)
+    # print(os.getenv("DB_PASSWORD")
     return {"message": "Hello World"}
 
 @app.post("/list/{category}")
