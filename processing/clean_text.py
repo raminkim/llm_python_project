@@ -1,6 +1,6 @@
 import re
 
-def clean_text(text):
+def clean_text(text: str) -> str:
     # 입력값이 문자열인지 확인
     if not isinstance(text, str):
         text = str(text)  # 문자열로 변환

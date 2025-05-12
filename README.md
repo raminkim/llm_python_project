@@ -93,3 +93,6 @@ uvicorn server.flutter_fast_api:app --reload
 ```
 
 
+- API 요청 예시 (postman)
+  <img src="https://github.com/user-attachments/assets/7e628208-4e5f-4e5b-a470-9d13268dce6d">
+
