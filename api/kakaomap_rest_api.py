@@ -1,17 +1,10 @@
 import requests
 import os
-import sys
 
-# 프로젝트 루트 디렉토리를 sys.path에 추가
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if PROJECT_ROOT not in sys.path:
-    sys.path.append(PROJECT_ROOT)
 
-from config.config import KAKAO_REST_API_KEY
-
-def search_by_category(longitude, latitude, category_code, size=10):
+def search_by_category(longitude, latitude, category_code, size=15):
     url = 'https://dapi.kakao.com/v2/local/search/category.json'
-    headers = {'Authorization': f'KakaoAK {KAKAO_REST_API_KEY}'}
+    headers = {'Authorization': f'KakaoAK {os.getenv("KAKAO_REST_API_KEY")}'}
     params = {
         'category_group_code': category_code,
         'x': longitude,

@@ -1,5 +1,4 @@
 import numpy as np
-import faiss
 
 def initialize_vector_db(all_places_reviews):
     """

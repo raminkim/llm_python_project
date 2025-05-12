@@ -4,14 +4,14 @@ from crawlers.get_review_content import async_request_review_graphql, async_pars
 from processing.review_to_json import async_review_to_json
 from embeddings_db.initialize_vector_db import initialize_vector_db
 
-from config.config import OPENAI_API_KEY
-
 from openai import OpenAI
+from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 
 import re
 import time
+import os
 
 
 async def process_category(category: str, x: float, y: float):
@@ -20,7 +20,7 @@ async def process_category(category: str, x: float, y: float):
     """
 
     # OpenAI client 정의
-    client = OpenAI(api_key = OPENAI_API_KEY)
+    client = OpenAI(api_key = os.getenv("OPENAI_API_KEY")) # gemini 2.0 나 2.5 flash 2.5로 변경해보기
 
     # 현재 처리중인 장소의 이름
     place_name = None
@@ -29,9 +29,10 @@ async def process_category(category: str, x: float, y: float):
     # search_result = kakaomap_rest_api.search_by_category(127.948911, 37.350087, "FD6", 15)
 
     search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
-    print("카카오맵 주변 카테고리 불러왔음.")
+    
 
     if search_result:
+        print("카카오맵 주변 카테고리 불러오기 성공!")
         print("춘천 주변 카페 검색 결과:")
 
         async def process_place(place):
@@ -111,7 +112,7 @@ async def process_category(category: str, x: float, y: float):
             # 쿼리 임베딩용 모델
             query_embedding_function = OpenAIEmbeddings(
                 model = "text-embedding-3-small", # get_embedding.py와 같은 임베딩 모델
-                openai_api_key = OPENAI_API_KEY
+                openai_api_key = os.getenv("OPENAI_API_KEY")
             )
 
             # generate_answer 함수에 전달할 langchain_vector_store 객체
@@ -130,24 +131,29 @@ async def process_category(category: str, x: float, y: float):
         else:
             print("오류: Chroma 벡터 저장소를 생성하지 못하였습니다.")
 
-
-        # 사용자 쿼리 처리
-        user_query = "을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘."
-
         # # 각 장소별로 개별 분석 수행
         print("\n===== 각 음식점 분석 결과 =====")
 
         # 클라이언트에게 반환할 음식점 결과 json list
         results_json_list = []
 
+        queries = [f"{place_data['place_name']}의 을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘." for place_data in all_places_reviews]
         # 각 장소별 답변 생성
-        generate_answer_tasks = [
-            asyncio.to_thread(openAI_api.generate_answer, f"{place_data['place_name']}의 {user_query}", langchain_vector_store, place_data['place_name'])
-            for place_data in all_places_reviews
-        ]
-        answers = await asyncio.gather(*generate_answer_tasks)
+        # generate_answer_tasks = [
+        #     asyncio.to_thread(
+        #         openAI_api.generate_answer,
+        #         f"{place_data['place_name']}의 을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘.",
+        #         langchain_vector_store,
+        #         place_data['place_name']
+        #     )s
+        #     for place_data in all_places_reviews
+        # ]
+        # answers = await asyncio.gather(*generate_answer_tasks)
 
-
+        start_time = time.time()
+        answers = await openAI_api.generate_answer(queries, langchain_vector_store, place_name)
+        end_time = time.time()
+        print(f"답변 생성 시간: {end_time - start_time}")
 
         # 각 답변에 대한 긍정/부정률 추출
         async def process_answer(place_data, answer):
@@ -187,7 +193,8 @@ async def process_category(category: str, x: float, y: float):
 
 
 if __name__ == "__main__":
-    import time
+    
+    load_dotenv()
     start_time = time.time()
     
     # FastAPI 서버가 아닌, 직접 실행 시의 동작 (예: 테스트, 백그라운드 작업)
