@@ -7,6 +7,8 @@ from embeddings_db.initialize_vector_db import initialize_vector_db
 from config.config import OPENAI_API_KEY
 
 from openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
 
 import re
 import time
@@ -96,24 +98,63 @@ async def process_category(category: str, x: float, y: float):
 
         # 전체 장소별 리뷰 데이터를 저장할 리스트
         all_places_reviews = [result for result in results if result is not None]
-        # 벡터 저장소 초기화
-        initialize_vector_db(all_places_reviews)
+
+        # 모든 장소의 리뷰 데이터를 FAISS 벡터 DB에 저장, FAISS 인덱스, 메타데이터 리스트, 그리고 임베딩 벡터 리스트를 반환
+        faiss_index, metadata_store, embedding_list = initialize_vector_db(all_places_reviews)
+
+
+        # Langchain FAISS 벡터 저장소 생성
+        if metadata_store and embedding_list:
+            # Langchain을 위한 text:embedding pair를 리스트로 만들기기
+            texts_list = [item["text"] for item in metadata_store]
+            text_embdding_pairs = list(zip(texts_list, embedding_list))
+
+            # 쿼리 임베딩용 모델
+            query_embedding_function = OpenAIEmbeddings(
+                model = "text-embedding-3-small", # get_embedding.py와 같은 임베딩 모델
+                openai_api_key = OPENAI_API_KEY
+            )
+
+            # generate_answer 함수에 전달할 langchain_vector_store 객체
+            langchain_vector_store = Chroma(
+                collection_name = "review_collection_chroma",
+                embedding_function = query_embedding_function,
+            )
+            print("정보: 빈 Chroma 벡터 저장소 객체가 생성되었습니다.")
+
+            langchain_vector_store.add_texts(
+                texts=texts_list,
+                embeddings=embedding_list,  # 미리 계산된 임베딩 벡터 리스트
+                metadatas=metadata_store,
+            )
+
+            print("Langchain FAISS 벡터 저장소 생성 완료.")
+        
+        else:
+            print("오류: Langchain FAISS 벡터 저장소를 생성하지 못하였습니다.")
+
 
         # 사용자 쿼리 처리
-        user_query = "긍정/부정을 %로 알려줘."
+        user_query = "을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘."
 
         # # 각 장소별로 개별 분석 수행
-        # print("\n===== 각 음식점 분석 결과 =====")
+        print("\n===== 각 음식점 분석 결과 =====")
 
         # 클라이언트에게 반환할 음식점 결과 json list
         results_json_list = []
 
         # 각 장소별 답변 생성
         generate_answer_tasks = [
-            asyncio.to_thread(openAI_api.generate_answer, client, f"{place_data['place_name']}의 {user_query}", place_data)
+            asyncio.to_thread(openAI_api.generate_answer, f"{place_data['place_name']}의 {user_query}", langchain_vector_store, place_data['place_name'])
             for place_data in all_places_reviews
         ]
         answers = await asyncio.gather(*generate_answer_tasks)
+
+        # for place_data in all_places_reviews:
+        #     print(place_data['place_name'])
+        #     print(openAI_api.generate_answer(f"{place_data['place_name']}의 {user_query}", langchain_vector_store, place_data['place_name']))
+
+
 
         # 각 답변에 대한 긍정/부정률 추출
         async def process_answer(place_data, answer):
@@ -136,7 +177,7 @@ async def process_category(category: str, x: float, y: float):
                 print(f"process_answer 오류 발생: {e}")
                 return None
         
-        # process_answer 코루틴을 직접 실행하고 await
+        # process_answer 병렬처리
         process_tasks = [
             process_answer(place_data, answer)
             for place_data, answer in zip(all_places_reviews, answers)
