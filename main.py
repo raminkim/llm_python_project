@@ -100,14 +100,13 @@ async def process_category(category: str, x: float, y: float):
         all_places_reviews = [result for result in results if result is not None]
 
         # 모든 장소의 리뷰 데이터를 FAISS 벡터 DB에 저장, FAISS 인덱스, 메타데이터 리스트, 그리고 임베딩 벡터 리스트를 반환
-        faiss_index, metadata_store, embedding_list = initialize_vector_db(all_places_reviews)
+        metadata_store, embedding_list = initialize_vector_db(all_places_reviews)
 
 
         # Langchain FAISS 벡터 저장소 생성
         if metadata_store and embedding_list:
             # Langchain을 위한 text:embedding pair를 리스트로 만들기기
             texts_list = [item["text"] for item in metadata_store]
-            text_embdding_pairs = list(zip(texts_list, embedding_list))
 
             # 쿼리 임베딩용 모델
             query_embedding_function = OpenAIEmbeddings(
@@ -127,11 +126,9 @@ async def process_category(category: str, x: float, y: float):
                 embeddings=embedding_list,  # 미리 계산된 임베딩 벡터 리스트
                 metadatas=metadata_store,
             )
-
-            print("Langchain FAISS 벡터 저장소 생성 완료.")
         
         else:
-            print("오류: Langchain FAISS 벡터 저장소를 생성하지 못하였습니다.")
+            print("오류: Chroma 벡터 저장소를 생성하지 못하였습니다.")
 
 
         # 사용자 쿼리 처리
@@ -149,10 +146,6 @@ async def process_category(category: str, x: float, y: float):
             for place_data in all_places_reviews
         ]
         answers = await asyncio.gather(*generate_answer_tasks)
-
-        # for place_data in all_places_reviews:
-        #     print(place_data['place_name'])
-        #     print(openAI_api.generate_answer(f"{place_data['place_name']}의 {user_query}", langchain_vector_store, place_data['place_name']))
 
 
 
