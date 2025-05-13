@@ -29,6 +29,8 @@ async def process_category(category: str, x: float, y: float):
     # search_result = kakaomap_rest_api.search_by_category(127.948911, 37.350087, "FD6", 15)
 
     search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
+
+    coordinate_dict = {}
     
 
     if search_result:
@@ -41,6 +43,8 @@ async def process_category(category: str, x: float, y: float):
                 place_y = place.get('y')
                 road_address_name = place.get('road_address_name')
                 place_name = place.get('place_name')
+
+                coordinate_dict[place_name] = [place_x, place_y]
 
 
                 documents = kakaomap_transfrom_address.transform_coordinates(place_x, place_y)['documents'][0]
@@ -166,10 +170,14 @@ async def process_category(category: str, x: float, y: float):
                 match_negative = re.search(r"부정:\s*(\d+)%", answer)
                 negative_rate = int(match_negative.group(1)) if match_negative else None
 
+                coordinate_list = coordinate_dict[place_data["place_name"]]
+
                 return {
                     "store_name": place_data["place_name"],
                     "positive_rate": positive_rate,
-                    "negative_rate": negative_rate
+                    "negative_rate": negative_rate,
+                    "x": coordinate_list[0],
+                    "y": coordinate_list[1]
                 }
 
             except Exception as e:
