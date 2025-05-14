@@ -165,11 +165,9 @@ async def process_category(category: str, x: float, y: float):
                 # 긍정률 추출 후, int casting
                 match_positive = re.search(r"긍정:\s*(\d+)%", answer)
                 positive_rate = int(match_positive.group(1)) if match_positive else None
-
                 # 부정률 추출 후, int casting
                 match_negative = re.search(r"부정:\s*(\d+)%", answer)
                 negative_rate = int(match_negative.group(1)) if match_negative else None
-
                 coordinate_list = coordinate_dict[place_data["place_name"]]
 
                 return {
@@ -183,7 +181,7 @@ async def process_category(category: str, x: float, y: float):
             except Exception as e:
                 print(f"process_answer 오류 발생: {e}")
                 return None
-        
+
         # process_answer 병렬처리
         process_tasks = [
             process_answer(place_data, answer)
