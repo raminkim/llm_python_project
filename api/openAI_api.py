@@ -6,7 +6,7 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.retrievers import SelfQueryRetriever
 from langchain.chains.query_constructor.base import AttributeInfo
-
+import lark
 import os
 
 
