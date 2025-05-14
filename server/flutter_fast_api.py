@@ -1,10 +1,28 @@
 from fastapi import FastAPI
 from main import process_category
 import pymysql as sql
-import os
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import socket
+import time
+import threading
+import os
 
+load_dotenv()  # .env 파일 로드
 
+is_connected = False
+hostname = socket.gethostname()
+privateIP = 'http://' + socket.gethostbyname(hostname) + ':8000/'
+udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   #udp 소켓 생성. IPv4
+udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    #udp 소켓이 브로드캐스트 메시지를 보내도록 설정
+def broadcast():
+    while not is_connected:
+        print("send broadcast message")
+        udp_socket.sendto(privateIP.encode(), ("255.255.255.255", 8888))
+        time.sleep(5)
+broadcast_thread = threading.Thread(target=broadcast, daemon=True)
+broadcast_thread.start()
+print(privateIP)
 app = FastAPI()
 conn = sql.connect(
     host='127.0.0.1',
@@ -13,23 +31,19 @@ conn = sql.connect(
     database='route_recommendation',
     charset='utf8mb4',
 )
-origins = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # 허용할 출처
-    allow_credentials=True,  # 인증 정보 포함 여부
-    allow_methods=["*"],  # 허용할 HTTP 메서드 (GET, POST 등)
-    allow_headers=["*"],  # 허용할 헤더
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 cursor = conn.cursor()
+
 @app.get("/")
 async def root():
-    # print(os.getenv("DB_PASSWORD")
     return {"message": "Hello World"}
 
 @app.post("/list/{category}")
@@ -54,6 +68,12 @@ async def insert_user_info(userID: str, userPW: str):
     finally:
         print(result)
     return result
+
+@app.get("/get_connect_state")
+async def get_connect_state():
+    global is_connected
+    is_connected = True
+    return {"message": "OK"}
 
 @app.get("/duplicate_check")
 async def checkIdDuplicate(userID: str):
