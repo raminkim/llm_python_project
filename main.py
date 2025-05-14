@@ -13,6 +13,8 @@ import re
 import time
 import os
 
+import traceback
+
 
 async def process_category(category: str, x: float, y: float):
     """
@@ -30,7 +32,10 @@ async def process_category(category: str, x: float, y: float):
 
     search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
 
+    # 장소 이름을 key로 하며, 좌표 값을 저장하는 dict
     coordinate_dict = {}
+
+    mapping_place_name_dict = {}
     
 
     if search_result:
@@ -42,9 +47,9 @@ async def process_category(category: str, x: float, y: float):
                 place_x = place.get('x')
                 place_y = place.get('y')
                 road_address_name = place.get('road_address_name')
-                place_name = place.get('place_name')
+                before_place_name = place.get('place_name')
 
-                coordinate_dict[place_name] = [place_x, place_y]
+                coordinate_dict[before_place_name] = [place_x, place_y]
 
 
                 documents = kakaomap_transfrom_address.transform_coordinates(place_x, place_y)['documents'][0]
@@ -59,7 +64,7 @@ async def process_category(category: str, x: float, y: float):
                 place_x, place_y = documents['x'], documents['y']
 
                 # 네이버 지역 검색 API 기준의 place name 받아오기
-                items = naver_search_api.naver_search_api(f'{region_2depth_name} {region_3depth_name} {place_name}')['items']
+                items = naver_search_api.naver_search_api(f'{region_2depth_name} {region_3depth_name} {before_place_name}')['items']
 
                 # items가 비어있다면, 검색 결과가 없는 것이므로 None을 반환.
                 if not items:
@@ -67,10 +72,10 @@ async def process_category(category: str, x: float, y: float):
                     return None
 
                 # <b></b> 등 html 태그 제거
-                place_name = re.sub(r"<[^>]+>", "", items[0]['title'])
-                print(place_name)
+                after_place_name = re.sub(r"<[^>]+>", "", items[0]['title'])
+                print(after_place_name)
 
-                place_id = await async_request_place_id_graphql(place_name, place_x, place_y)
+                place_id = await async_request_place_id_graphql(after_place_name, place_x, place_y)
 
                 if place_id:
                     print(place_id)
@@ -90,7 +95,12 @@ async def process_category(category: str, x: float, y: float):
                     # 리뷰 데이터값 -> JSON으로 바꿔 리스트화 시키기
                     review_jsons = await async_review_to_json(review_list, client)
 
-                    return {"place_name": place_name, "reviews": review_jsons}
+                    # 네이버 지도 장소 이름(after_place_name)을 key로, 원래 카카오맵 장소 이름(before_place_name)을 value로로 매핑
+                    mapping_place_name_dict[after_place_name] = before_place_name
+                    print(f"{before_place_name} -> {after_place_name}")
+
+
+                    return {"place_name": after_place_name, "reviews": review_jsons}
 
             
             except Exception as e:
@@ -103,6 +113,8 @@ async def process_category(category: str, x: float, y: float):
 
         # 전체 장소별 리뷰 데이터를 저장할 리스트
         all_places_reviews = [result for result in results if result is not None]
+
+        print(f"매핑한 dict: {mapping_place_name_dict}")
 
         # 모든 장소의 리뷰 데이터를 FAISS 벡터 DB에 저장, FAISS 인덱스, 메타데이터 리스트, 그리고 임베딩 벡터 리스트를 반환
         metadata_store, embedding_list = initialize_vector_db(all_places_reviews)
@@ -156,6 +168,7 @@ async def process_category(category: str, x: float, y: float):
 
         start_time = time.time()
         answers = await openAI_api.generate_answer(queries, langchain_vector_store, place_name)
+        print(answers)
         end_time = time.time()
         print(f"답변 생성 시간: {end_time - start_time}")
 
@@ -170,7 +183,11 @@ async def process_category(category: str, x: float, y: float):
                 match_negative = re.search(r"부정:\s*(\d+)%", answer)
                 negative_rate = int(match_negative.group(1)) if match_negative else None
 
-                coordinate_list = coordinate_dict[place_data["place_name"]]
+                print(f"장소 이름: {place_data['place_name']}")
+                print(coordinate_dict)
+
+                coordinate_list = coordinate_dict[mapping_place_name_dict[place_data["place_name"]]]
+                
 
                 return {
                     "store_name": place_data["place_name"],
@@ -181,9 +198,13 @@ async def process_category(category: str, x: float, y: float):
                 }
 
             except Exception as e:
-                print(f"process_answer 오류 발생: {e}")
+                print(f"process_answer 함수 내부 또는 호출 과정에서 오류 발생: {e}") # 어떤 함수에서 오류가 났는지 명시
+                # print("========== 전체 트레이스백 시작 ==========")
+                # traceback.print_exc() # 전체 트레이스백을 출력합니다.
+                # print("========== 전체 트레이스백 끝 ==========")
                 return None
         
+
         # process_answer 병렬처리
         process_tasks = [
             process_answer(place_data, answer)
@@ -201,6 +222,7 @@ async def process_category(category: str, x: float, y: float):
 
 
 if __name__ == "__main__":
+
     
     load_dotenv()
     start_time = time.time()

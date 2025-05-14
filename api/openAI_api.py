@@ -14,6 +14,7 @@ import os
 import langchain
 import logging # Python 기본 로깅 모듈
 
+
 try:
     # Langchain의 전역 verbose 모드 활성화
     langchain.globals.set_verbose(True)
@@ -119,7 +120,7 @@ async def generate_answer(queries: list, vector_store: FAISS, target_place_name:
         prompts = await asyncio.gather(*generate_prompt_tasks)
 
         results = await llm.abatch(prompts)
-        print(results)
+        print(f"답변 결과: {results}")
 
     
 
