@@ -37,7 +37,7 @@
 
 ### 2. 서버 실행 방법
 ```bash
-uvicorn server.flutter_fast_api:app --reload
+uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000
 ```
 
 ### 3. 서버 종료 방법
