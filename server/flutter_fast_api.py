@@ -28,34 +28,29 @@ app = FastAPI()
 #     "http://127.0.0.1:8000",
 # ]
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,  # 허용할 출처
-#     allow_credentials=True,  # 인증 정보 포함 여부
-#     allow_methods=["*"],  # 허용할 HTTP 메서드 (GET, POST 등)
-#     allow_headers=["*"],  # 허용할 헤더
-# )
+hostname = socket.gethostname()
 
-# is_connected = False
-# hostname = socket.gethostname()
-# privateIP = 'http://' + socket.gethostbyname(hostname) + ':8000/'
-# udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   #udp 소켓 생성. IPv4
-# udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    #udp 소켓이 브로드캐스트 메시지를 보내도록 설정
-# def broadcast():
-#     while not is_connected:
-#         print("send broadcast message")
-#         udp_socket.sendto(privateIP.encode(), ("255.255.255.255", 8888))
-#         time.sleep(5)
-# broadcast_thread = threading.Thread(target=broadcast, daemon=True)
-# broadcast_thread.start()
-# conn = sql.connect(
-#     host='127.0.0.1',
-#     user='root',
-#     password=os.getenv("DB_PASSWORD"),
-#     database='route_recommendation',
-#     charset='utf8mb4',
-# )
-# cursor = conn.cursor()
+privateIP = 'http://' + socket.gethostbyname(hostname) + ':8000/'
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=privateIP,  # 허용할 출처
+    allow_credentials=True,  # 인증 정보 포함 여부
+    allow_methods=["*"],  # 허용할 HTTP 메서드 (GET, POST 등)
+    allow_headers=["*"],  # 허용할 헤더
+)
+
+is_connected = False
+
+udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   #udp 소켓 생성. IPv4
+udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    #udp 소켓이 브로드캐스트 메시지를 보내도록 설정
+def broadcast():
+    while not is_connected:
+        print("send broadcast message")
+        udp_socket.sendto(privateIP.encode(), ("255.255.255.255", 8888))
+        time.sleep(5)
+broadcast_thread = threading.Thread(target=broadcast, daemon=True)
+broadcast_thread.start()
 
 
 @app.get("/")

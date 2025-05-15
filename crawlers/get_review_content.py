@@ -259,4 +259,4 @@ if __name__ == '__main__':
     }]
 
     response = requests.post(url, headers=headers, json=payload)
-    print(response.json)
+    print(response.json())
