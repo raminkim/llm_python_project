@@ -22,6 +22,7 @@
   - **python-dotenv**: 환경 변수 로드 라이브러리
   - **lark**
   - **langchain_community**
+  - **langchain_openai**
 
 - **외부 API KEY**: 프로젝트에서 사용하는 외부 API 키가 필요합니다.
   - **OpenAI API KEY**
