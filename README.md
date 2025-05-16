@@ -23,6 +23,8 @@
   - **lark**
   - **langchain_community**
   - **langchain_openai**
+  - **langchain_chroma**
+  - **pymysql**
 
 - **외부 API KEY**: 프로젝트에서 사용하는 외부 API 키가 필요합니다.
   - **OpenAI API KEY**
