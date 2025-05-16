@@ -69,30 +69,169 @@ uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000
 ```bash
   [
     {
-        "store_name": "육림객잔",
-        "positive_rate": 90,
-        "negative_rate": 10
+        "store_name": "포지티브즈",
+        "AI_score": 98,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "12:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "342",
+        "phone_number": null
     },
     {
-        "store_name": "진미닭갈비 본점",
-        "positive_rate": 85,
-        "negative_rate": 15
+        "store_name": "스타벅스 강원대점",
+        "AI_score": 95,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "09:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "3,186",
+        "phone_number": "1522-3232"
     },
     {
-        "store_name": "1.5닭갈비 본점",
-        "positive_rate": 80,
-        "negative_rate": 20
+        "store_name": "카페 예담더갤러리",
+        "AI_score": 95,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "10:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "337",
+        "phone_number": null
     },
-        ... (중략)
     {
-        "store_name": "돌다리야채곱창",
-        "positive_rate": 80,
-        "negative_rate": 20
+        "store_name": "이스케이프존 강원대1호점",
+        "AI_score": null,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "곧 영업 종료",
+        "status_description": "24:00에 영업 종료",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "42",
+        "phone_number": "033-251-6833"
     },
     {
-        "store_name": "단하비",
-        "positive_rate": 95,
-        "negative_rate": 5
+        "store_name": "위위",
+        "AI_score": 98,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "12:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "113",
+        "phone_number": "070-4216-4516"
+    },
+    {
+        "store_name": "할리스 춘천강원대점",
+        "AI_score": 50,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 중",
+        "status_description": "06:00에 브레이크타임",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "98",
+        "phone_number": "033-253-0425"
+    },
+    {
+        "store_name": "프롬마인드",
+        "AI_score": 99,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "08:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "2,378",
+        "phone_number": null
+    },
+    {
+        "store_name": "스타벅스 춘천후석로DT점",
+        "AI_score": 85,
+        "x": 127.7487156850901,
+        "y": 37.88249358099619,
+        "status": "영업 종료",
+        "status_description": "07:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "240",
+        "phone_number": "1522-3232"
+    },
+    {
+        "store_name": "메가MGC커피 강원대점",
+        "AI_score": 85,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 중",
+        "status_description": "01:00에 영업 종료",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "561",
+        "phone_number": null
+    },
+    {
+        "store_name": "시실리아 커피로스팅 하우스",
+        "AI_score": 98,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "12:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "155",
+        "phone_number": "070-7768-9255"
+    },
+    {
+        "store_name": "아글라오네마",
+        "AI_score": null,
+        "x": 127.7487156850901,
+        "y": 37.88249358099619,
+        "status": "영업 종료",
+        "status_description": "12:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "170",
+        "phone_number": null
+    },
+    {
+        "store_name": "MST",
+        "AI_score": 98,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "11:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "181",
+        "phone_number": null
+    },
+    {
+        "store_name": "빈티지다락방",
+        "AI_score": 65,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 중",
+        "status_description": "01:00에 영업 종료",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "99",
+        "phone_number": "033-6293-4253"
+    },
+    {
+        "store_name": "쿠프만153",
+        "AI_score": 95,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 중",
+        "status_description": "02:00에 영업 종료",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "243",
+        "phone_number": null
+    },
+    {
+        "store_name": "퍼스트러브",
+        "AI_score": null,
+        "x": 127.7353546951689,
+        "y": 37.87263513844341,
+        "status": "영업 종료",
+        "status_description": "10:00에 영업 시작",
+        "visitorReviewScore": null,
+        "visitorReviewCount": "22",
+        "phone_number": null
     }
 ]
 ```
