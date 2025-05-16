@@ -17,7 +17,7 @@ async def async_review_to_json(reviews, client:OpenAI, chunk_size=100, overlap=2
     """
         리뷰 데이터를 JSON 형식으로 변환하는 함수.
         Args:
-            reviews (list): 리뷰 텍스트 리스트.
+            # reviews (list): 리뷰 텍스트 리스트.
             client (OpenAI): OpenAI 객체.
             chunk_size (int): 각 청크의 최대 단어 수.
             overlap (int): 청크 간 겹치는 단어 수.
@@ -27,9 +27,7 @@ async def async_review_to_json(reviews, client:OpenAI, chunk_size=100, overlap=2
     """
     async def process_single_review(review, idx):
         try:
-            review_index = f"review_{idx:03}"
             cleaned_text = clean_text(review)
-            text_length = classify_length(cleaned_text)
             chunks = chunk_text(cleaned_text, chunk_size=chunk_size, overlap=overlap)
 
             print(f"chunks: {chunks}")
@@ -46,9 +44,7 @@ async def async_review_to_json(reviews, client:OpenAI, chunk_size=100, overlap=2
             embeddings = await asyncio.gather(*embedding_tasks)
 
             return {
-                "index": review_index,
                 "text": cleaned_text,
-                "length": text_length,
                 "chunks": [{"text": chunk, "embedding": embedding} for chunk, embedding in zip(chunks, embeddings)]
             }
         except Exception as e:
