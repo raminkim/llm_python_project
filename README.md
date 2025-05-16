@@ -66,6 +66,15 @@ uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000
 ```
 
 - 응답 예시
+  - **store_name**: 장소 이름
+  - **AI_score**: Gemini가 판단한 장소 평가 점수 (0 ~ 100)
+  - **x**: 장소의 x 좌표
+  - **y**: 장소의 y 좌표
+  - **status**: 장소의 현재 영업 정보 (영업 전 / 영업 중 / 영업 종료, etc). 없다면 null.
+  - **status_description**: 장소의 영업 설명. 없다면 null.
+  - **visitorReviewScore**: 장소의 리뷰 평점. 없다면 null.
+  - **visitorReviewCoun**t: 장소의 리뷰 수. 없다면 null.
+  - **phone_number**: 장소의 전화번호. 없다면 null.
 ```bash
   [
     {
