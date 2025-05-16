@@ -21,6 +21,7 @@
   - **requests**: HTTP 요청 라이브러리 (API, REST API 호출에 사용됩니다.)
   - **python-dotenv**: 환경 변수 로드 라이브러리
   - **lark**
+  - **langchain_community**
 
 - **외부 API KEY**: 프로젝트에서 사용하는 외부 API 키가 필요합니다.
   - **OpenAI API KEY**
