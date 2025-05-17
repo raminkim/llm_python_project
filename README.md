@@ -1,9 +1,18 @@
 # FastAPI 기반 Flutter 연동 서버 (Python 구현)
 
-## 프로젝트 개요
+##  프로젝트 소개
 이 프로젝트는 LLM을 활용한 여행 경로 추천 앱 'TripOut'을 위해 개발된 Python FastAPI 서버입니다.
 
 <a href = "https://rustic-cave-d05.notion.site/LLM_python_project-1df41e3234ba802a9548d05fea3fc885?pvs=74">프로젝트 파일 구조</a>
+
+## 📅 만든 기간
+- 2025.03.29(토) ~ 
+  
+## 💻 개발 환경
+- **Python Version**: 3.10.16
+- **Framework**: FastAPI Version 0.115.12
+- **IDE**: Visual Studio Code
+- **Web Server (ASGI)**: Uvicorn
 
 ## 시작하기
 
