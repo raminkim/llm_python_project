@@ -183,13 +183,13 @@ async def process_category(category: str, x: float, y: float):
                 return {
                     "store_name": place_data["place_name"],
                     "AI_score": AI_score,
-                    "x": place_info.get("x"),
-                    "y": place_info.get("y"),
+                    "x": float(place_info.get("x")),
+                    "y": float(place_info.get("y")),
                     "status": place_info.get("status"), # 현재 영업 상태 정보
                     "status_description": place_info.get('status_description'), # 영업 상태 정보에 대한 설명(description)
                     "visitorReviewScore": place_info.get('vvisitorReviewScore'), # 장소 리뷰 평점
                     "visitorReviewCount": place_info.get('visitorReviewCount'), # 장소 리뷰 수
-                    "phone_number": place_info.get('phone_number'), # 장소 리뷰 수
+                    "phone_number": place_info.get('phone_number'), # 장소 전화번호
                 }
 
             except Exception as e:
