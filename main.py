@@ -68,11 +68,11 @@ async def process_category(category: str, x: float, y: float):
                 after_place_name = re.sub(r"<[^>]+>", "", items[0]['title'])
                 print(after_place_name)
 
-                place_id, status, status_description, visitorReviewScore, visitorReviewCount, phone_number = await async_request_place_id_graphql(after_place_name, place_x, place_y)
+                place_id, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = await async_request_place_id_graphql(after_place_name, place_x, place_y)
 
                 place_name_to_details[after_place_name] = {
-                    "x": place_x, # x 좌표
-                    "y": place_y, # y 좌표
+                    "x": longitude, # x 좌표
+                    "y": latitude, # y 좌표
                     "status": status, # 현재 영업 상태 정보
                     "status_description": status_description, # 영업 상태 정보에 대한 설명(description)
                     "visitorReviewScore": visitorReviewScore, # 장소 리뷰 평점

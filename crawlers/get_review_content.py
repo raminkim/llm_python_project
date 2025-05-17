@@ -267,9 +267,9 @@ async def async_request_place_id_graphql(keyword: str, x, y):
                 # 응답 텍스트를 비동기적으로 읽어옴
                 html_content = await response.text(encoding='UTF-8')
                 # # 디버깅용 (html_content 출력)
-                # with open('html_content.txt', 'a', encoding='utf-8') as f:
-                #     f.write(html_content+"\n")
-                #     f.write("="*40+"\n")
+                with open('html_content.txt', 'a', encoding='utf-8') as f:
+                    f.write(html_content+"\n")
+                    f.write("="*40+"\n")
                     
 
                 try:
@@ -342,6 +342,16 @@ async def async_request_place_id_graphql(keyword: str, x, y):
 
                                             if not phone_number:
                                                 error_message = "장소 전화번호를 상세 정보(place_details)에서 찾을 수 없습니다."
+
+                                            # 8-4. 위도 추출
+                                            latitude = place_details.get("y")
+                                            if not latitude:
+                                                error_message = "위도를 상세 정보(place_details)에서 찾을 수 없습니다."
+
+                                            # 8-5. 경도 추출
+                                            longitude = place_details.get("x")
+                                            if not longitude:
+                                                error_message = "경도를 상세 정보(place_details)에서 찾을 수 없습니다."
                                             
 
                                             # 9. 영업 중인지에 대한 정보를 가져오기
@@ -366,7 +376,7 @@ async def async_request_place_id_graphql(keyword: str, x, y):
                 print(f"{keyword}의 id = {place_id_str}, 현재 영업 정보 = {status}, 영업 정보 description = {status_description}")
                 print(f"{keyword}의 별점 = {visitorReviewScore} 점(리뷰 {visitorReviewCount}개 기반)")
 
-                return place_id_str, status, status_description, visitorReviewScore, visitorReviewCount, phone_number
+                return place_id_str, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude
             
             else:
                 # HTTP 요청 실패 (response.status_code != 200)
