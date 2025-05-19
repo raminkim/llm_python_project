@@ -16,13 +16,15 @@ app = FastAPI()
 
 # 오류 나서 주석 처리
 
-# conn = sql.connect(
-#     host='127.0.0.1',
-#     user='root',
-#     password=os.getenv("DB_PASSWORD"),
-#     database='route_recommendation',
-#     charset='utf8mb4',
-# )
+conn = sql.connect(
+    host='127.0.0.1',
+    user='root',
+    password=os.getenv("DB_PASSWORD"),
+    database='route_recommendation',
+    charset='utf8mb4',
+)
+
+cursor = conn.cursor()
 hostname = socket.gethostname()
 privateIP = 'http://' + socket.gethostbyname(hostname) + ':8000/'
 
@@ -44,14 +46,6 @@ def broadcast():
         time.sleep(5)
 broadcast_thread = threading.Thread(target=broadcast, daemon=True)
 broadcast_thread.start()
-conn = sql.connect(
-    host='127.0.0.1',
-    user='root',
-    password=os.getenv("DB_PASSWORD"),
-    database='route_recommendation',
-    charset='utf8mb4',
-)
-cursor = conn.cursor()
 
 
 @app.get("/")

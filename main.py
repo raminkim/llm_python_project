@@ -24,17 +24,12 @@ async def process_category(category: str, x: float, y: float):
     # OpenAI client 정의
     client = OpenAI(api_key = os.getenv("OPENAI_API_KEY")) # gemini 2.0 나 2.5 flash 2.5로 변경해보기
 
-    # 현재 처리중인 장소의 이름
-    place_name = None
-
-    # search_result = search_by_category(127.743288, 37.872316, "FD6", 15)
-    # search_result = kakaomap_rest_api.search_by_category(127.948911, 37.350087, "FD6", 15)
-
     search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
 
     # 장소 이름을 key로 하며, 좌표 값을 저장하는 dict
-    coordinate_dict = {}
+    place_name_to_details = {}
 
+    # key로 네이버 지도의 장소 이름, value로 카카오맵의 장소 이름을 가져 mapping해주는 dict.
     mapping_place_name_dict = {}
     
 
@@ -48,8 +43,6 @@ async def process_category(category: str, x: float, y: float):
                 place_y = place.get('y')
                 road_address_name = place.get('road_address_name')
                 before_place_name = place.get('place_name')
-
-                coordinate_dict[before_place_name] = [place_x, place_y]
 
 
                 documents = kakaomap_transfrom_address.transform_coordinates(place_x, place_y)['documents'][0]
@@ -75,10 +68,21 @@ async def process_category(category: str, x: float, y: float):
                 after_place_name = re.sub(r"<[^>]+>", "", items[0]['title'])
                 print(after_place_name)
 
-                place_id = await async_request_place_id_graphql(after_place_name, place_x, place_y)
+                place_id, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = await async_request_place_id_graphql(after_place_name, place_x, place_y)
+
+                place_name_to_details[after_place_name] = {
+                    "x": longitude, # x 좌표
+                    "y": latitude, # y 좌표
+                    "status": status, # 현재 영업 상태 정보
+                    "status_description": status_description, # 영업 상태 정보에 대한 설명(description)
+                    "visitorReviewScore": visitorReviewScore, # 장소 리뷰 평점
+                    "visitorReviewCount": visitorReviewCount, # 장소 리뷰 수
+                    "phone_number": phone_number # 장소 전화번호
+                }
+
+                print("디테일 제발요: ", place_name_to_details)
 
                 if place_id:
-                    print(place_id)
                     request_result = await async_request_review_graphql(place_id)
                     reviews = await async_parse_review_content(request_result)
 
@@ -86,8 +90,8 @@ async def process_category(category: str, x: float, y: float):
 
                     # reviews 문제 X
                     for review in reviews:
-                        # 리뷰 내용이 3글자 이하라면 리뷰에 포함하지 않는다.
-                        if (len(review) > 3):
+                        # 리뷰 내용이 5글자 이하라면 리뷰에 포함하지 않는다.
+                        if (len(review) > 5):
                             review_list.append(review)
 
                     print(f"review_list: {review_list}")
@@ -97,8 +101,6 @@ async def process_category(category: str, x: float, y: float):
 
                     # 네이버 지도 장소 이름(after_place_name)을 key로, 원래 카카오맵 장소 이름(before_place_name)을 value로로 매핑
                     mapping_place_name_dict[after_place_name] = before_place_name
-                    print(f"{before_place_name} -> {after_place_name}")
-
 
                     return {"place_name": after_place_name, "reviews": review_jsons}
 
@@ -122,7 +124,7 @@ async def process_category(category: str, x: float, y: float):
 
         # Langchain FAISS 벡터 저장소 생성
         if metadata_store and embedding_list:
-            # Langchain을 위한 text:embedding pair를 리스트로 만들기기
+            # Langchain을 위한 text:embedding pair를 리스트로 만들기
             texts_list = [item["text"] for item in metadata_store]
 
             # 쿼리 임베딩용 모델
@@ -153,47 +155,41 @@ async def process_category(category: str, x: float, y: float):
         # 클라이언트에게 반환할 음식점 결과 json list
         results_json_list = []
 
-        queries = [f"{place_data['place_name']}의 을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘." for place_data in all_places_reviews]
-        # 각 장소별 답변 생성
-        # generate_answer_tasks = [
-        #     asyncio.to_thread(
-        #         openAI_api.generate_answer,
-        #         f"{place_data['place_name']}의 을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘.",
-        #         langchain_vector_store,
-        #         place_data['place_name']
-        #     )s
-        #     for place_data in all_places_reviews
-        # ]
-        # answers = await asyncio.gather(*generate_answer_tasks)
+        place_query_inputs = {
+            place_data['place_name'] : {
+                "query": f"{place_data['place_name']}을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘.",
+                "status_description": place_name_to_details.get(place_data['place_name']).get('status_description'), # 영업 상태 정보에 대한 설명(description)
+                "visitorReviewScore": place_name_to_details.get(place_data['place_name']).get('vvisitorReviewScore'), # 장소 리뷰 평점
+                "visitorReviewCount": place_name_to_details.get(place_data['place_name']).get('visitorReviewCount') # 장소 리뷰 수
+            }
+            for place_data in all_places_reviews
+        }
 
         start_time = time.time()
-        answers = await openAI_api.generate_answer(queries, langchain_vector_store, place_name)
-        print(answers)
+        answers = await openAI_api.generate_answer(place_query_inputs, langchain_vector_store)
         end_time = time.time()
         print(f"답변 생성 시간: {end_time - start_time}")
 
-        # 각 답변에 대한 긍정/부정률 추출
+        # 각 답변에 대한 AI score 추출
         async def process_answer(place_data, answer):
             try:
-                # 긍정률 추출 후, int casting
-                match_positive = re.search(r"긍정:\s*(\d+)%", answer)
-                positive_rate = int(match_positive.group(1)) if match_positive else None
-                # 부정률 추출 후, int casting
-                match_negative = re.search(r"부정:\s*(\d+)%", answer)
-                negative_rate = int(match_negative.group(1)) if match_negative else None
+                # AI Score 추출 후, int casting
+                match_AI_score = re.search(r"AI score:\s*(\d+)점", answer)
+                AI_score = int(match_AI_score.group(1)) if match_AI_score else None
 
-                print(f"장소 이름: {place_data['place_name']}")
-                print(coordinate_dict)
-
-                coordinate_list = coordinate_dict[mapping_place_name_dict[place_data["place_name"]]]
+                # 해당 장소에 대해 x, y좌표, 영업 정보 등이 들어있는 dictionary를 가져온다.
+                place_info = place_name_to_details.get(place_data["place_name"])
                 
-
                 return {
                     "store_name": place_data["place_name"],
-                    "positive_rate": positive_rate,
-                    "negative_rate": negative_rate,
-                    "x": coordinate_list[0],
-                    "y": coordinate_list[1]
+                    "AI_score": AI_score,
+                    "x": float(place_info.get("x")),
+                    "y": float(place_info.get("y")),
+                    "status": place_info.get("status"), # 현재 영업 상태 정보
+                    "status_description": place_info.get('status_description'), # 영업 상태 정보에 대한 설명(description)
+                    "visitorReviewScore": place_info.get('visitorReviewScore'), # 장소 리뷰 평점
+                    "visitorReviewCount": place_info.get('visitorReviewCount'), # 장소 리뷰 수
+                    "phone_number": place_info.get('phone_number'), # 장소 전화번호
                 }
 
             except Exception as e:
@@ -214,7 +210,6 @@ async def process_category(category: str, x: float, y: float):
         # 결과 중 None이 아닌 것만 필터링
         results_json_list = [result for result in results if result is not None]
 
-
         return results_json_list
     else:
         print("카카오맵 API 검색 실패.")
@@ -232,7 +227,10 @@ if __name__ == "__main__":
             result = await process_category("FD6", 127.743288, 37.872316)
             print("직접 실행 결과:", result)
         except Exception as e:
-            print(f"실행 중 오류 발생: {e}")
+            print(f"main_script() 실행 중 오류 발생: {e}")
+            print("========== 전체 트레이스백 시작 ==========")
+            traceback.print_exc() # 전체 트레이스백을 출력합니다.
+            print("========== 전체 트레이스백 끝 ==========")
 
     asyncio.run(main_script())
     
