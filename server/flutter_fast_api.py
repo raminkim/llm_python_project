@@ -62,17 +62,50 @@ async def read_list(category: str, x: float, y:float):
 
 @app.post("/insert_new_place")
 async def insert_new_place(placeName: str, userID: str, startDate: str, endDate: str):
+    """
+    사용자가 추가한 장소 정보를 DB에 삽입입
+
+    Args:
+        placeName (str): 장소 이름
+        userID (str): 사용자 ID
+        startDate (str): 여행 시작 날짜
+        endDate (str): 여행 종료 날짜
+
+    Returns:
+        _type_: JSON, 장소 정보 추가 여부 반환환
+    """
     try:
-        cursor.execute("insert into place_list (place_name, id, start_date, end_date) values (%s, %s, %s, %s)", (placeName, userID, startDate, endDate))
+        cursor.execute("insert into place_list (place_name, id, start_date, end_date)\
+                        values (%s, %s, %s, %s)", (placeName, userID, startDate, endDate))
         conn.commit()
         cursor.execute("select * from place_list")
         result = cursor.fetchall()
         return result
     except Exception as e:
         print(f'error {e}')
+        return False
+
+@app.get("/get_uesr_place")
+async def get_user_place(userID: str):
+    try:
+        cursor.execute("select * from place_list where id = %s", (userID,))
+        result = cursor.fetchall
+        return result
+    except Exception as e:
+        print(f'error {e}')
 
 @app.post("/insert_user_info")
 async def insert_user_info(userID: str, userPW: str):
+    """
+    회원 가입한 사용자 정보를 DB에 추가
+
+    Args:
+        userID (str): 사용자 ID
+        userPW (str): SHA256으로 해싱된 사용자 암호
+
+    Returns:
+        _type_: _description_
+    """
     try:
         print(f'{userID}, {userPW}')
         cursor.execute("insert into users_info (id, password) values (%s, %s)", (userID, userPW))
@@ -85,6 +118,16 @@ async def insert_user_info(userID: str, userPW: str):
 
 @app.get("/user_validation")
 async def user_validation(userID: str, userPW: str):
+    """
+    사용자 로그인 시 인증
+
+    Args:
+        userID (str): 사용자 입력 ID
+        userPW (str): 사용자 PW
+
+    Returns:
+        _type_: _description_
+    """
     try:
         cursor.execute("select id, password from users_info where id = %s and password = %s", (userID, userPW))
         result = cursor.fetchall()
@@ -97,10 +140,25 @@ async def user_validation(userID: str, userPW: str):
 
 @app.get("/get_connect_state")
 async def get_connect_state():
+    """
+    플러터 앱과 사설 네트워크 서버에 연결되었는지 확인인
+
+    Returns:
+        _type_: _description_
+    """
     return JSONResponse(content={"message": "확인"}, media_type="application/json; charset=utf-8")
 
 @app.get("/duplicate_check")
 async def checkIdDuplicate(userID: str):
+    """
+    ID 중복 확인인
+
+    Args:
+        userID (str): 사용자 입력 ID
+
+    Returns:
+        _type_: _description_
+    """
     try:
         isDuplicate = False
         print(userID)
@@ -112,7 +170,3 @@ async def checkIdDuplicate(userID: str):
     except Exception as e:
         print(f'error {e}')
     return isDuplicate
-
-@app.get("/user_info/")
-async def get_user_info():
-    return
