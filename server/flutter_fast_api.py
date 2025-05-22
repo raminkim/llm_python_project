@@ -85,11 +85,12 @@ async def insert_new_place(placeName: str, userID: str, startDate: str, endDate:
         print(f'error {e}')
         return False
 
-@app.get("/get_uesr_place")
+@app.get("/get_user_place")
 async def get_user_place(userID: str):
     try:
+        print(userID)
         cursor.execute("select * from place_list where id = %s", (userID,))
-        result = cursor.fetchall
+        result = cursor.fetchall()
         return result
     except Exception as e:
         print(f'error {e}')
