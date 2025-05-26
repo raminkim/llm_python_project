@@ -259,6 +259,12 @@ async def async_request_place_id_graphql(keyword: str, x, y):
     visitorReviewScore = None
     # 장소 방문자 리뷰 개수
     visitorReviewCount = None
+    # 장소 전화번호
+    phone_number = None
+    # 장소 위도
+    latitude = None
+    # 장소 경도
+    longitude = None
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url, params=params, headers=headers) as response:
@@ -266,10 +272,10 @@ async def async_request_place_id_graphql(keyword: str, x, y):
 
                 # 응답 텍스트를 비동기적으로 읽어옴
                 html_content = await response.text(encoding='UTF-8')
-                # # 디버깅용 (html_content 출력)
-                with open('html_content.txt', 'a', encoding='utf-8') as f:
-                    f.write(html_content+"\n")
-                    f.write("="*40+"\n")
+                # # # 디버깅용 (html_content 출력)
+                # with open('html_content.txt', 'a', encoding='utf-8') as f:
+                #     f.write(html_content+"\n")
+                #     f.write("="*40+"\n")
                     
 
                 try:

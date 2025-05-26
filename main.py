@@ -24,13 +24,13 @@ async def process_category(category: str, x: float, y: float):
     # OpenAI client 정의
     client = OpenAI(api_key = os.getenv("OPENAI_API_KEY")) # gemini 2.0 나 2.5 flash 2.5로 변경해보기
 
+    start_time = time.time()
     search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
+    end_time = time.time()
+    print(f"카카오맵 주변 카테고리 검색 시간: {end_time - start_time:.2f}초")
 
     # 장소 이름을 key로 하며, 좌표 값을 저장하는 dict
     place_name_to_details = {}
-
-    # key로 네이버 지도의 장소 이름, value로 카카오맵의 장소 이름을 가져 mapping해주는 dict.
-    mapping_place_name_dict = {}
     
 
     if search_result:
@@ -41,11 +41,13 @@ async def process_category(category: str, x: float, y: float):
             try:
                 place_x = place.get('x')
                 place_y = place.get('y')
-                road_address_name = place.get('road_address_name')
+
                 before_place_name = place.get('place_name')
 
-
+                start_time = time.time()
                 documents = kakaomap_transfrom_address.transform_coordinates(place_x, place_y)['documents'][0]
+                end_time = time.time()
+                print(f"카카오 REST API 좌표 변환 시간: {end_time - start_time:.2f}초")
 
                 # 카카오 REST API를 이용해 좌표의 '시'를 받아오기. ex) 춘천시
                 region_2depth_name = documents['region_2depth_name']
@@ -57,7 +59,10 @@ async def process_category(category: str, x: float, y: float):
                 place_x, place_y = documents['x'], documents['y']
 
                 # 네이버 지역 검색 API 기준의 place name 받아오기
+                start_time = time.time()
                 items = naver_search_api.naver_search_api(f'{region_2depth_name} {region_3depth_name} {before_place_name}')['items']
+                end_time = time.time()
+                print(f"네이버 지역 검색 API 시간: {end_time - start_time:.2f}초")
 
                 # items가 비어있다면, 검색 결과가 없는 것이므로 None을 반환.
                 if not items:
@@ -68,7 +73,11 @@ async def process_category(category: str, x: float, y: float):
                 after_place_name = re.sub(r"<[^>]+>", "", items[0]['title'])
                 print(after_place_name)
 
+                # 카카오맵 GraphQL API를 이용해 장소 ID, 영업 상태 정보, 영업 상태 정보에 대한 설명(description), 장소 리뷰 평점, 장소 리뷰 수, 전화번호, 위도, 경도를 받아오기
+                start_time = time.time()
                 place_id, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = await async_request_place_id_graphql(after_place_name, place_x, place_y)
+                end_time = time.time()
+                print(f"카카오맵 GraphQL API 시간: {end_time - start_time:.2f}초")
 
                 place_name_to_details[after_place_name] = {
                     "x": longitude, # x 좌표
@@ -79,8 +88,6 @@ async def process_category(category: str, x: float, y: float):
                     "visitorReviewCount": visitorReviewCount, # 장소 리뷰 수
                     "phone_number": phone_number # 장소 전화번호
                 }
-
-                print("디테일 제발요: ", place_name_to_details)
 
                 if place_id:
                     request_result = await async_request_review_graphql(place_id)
@@ -99,9 +106,6 @@ async def process_category(category: str, x: float, y: float):
                     # 리뷰 데이터값 -> JSON으로 바꿔 리스트화 시키기
                     review_jsons = await async_review_to_json(review_list, client)
 
-                    # 네이버 지도 장소 이름(after_place_name)을 key로, 원래 카카오맵 장소 이름(before_place_name)을 value로로 매핑
-                    mapping_place_name_dict[after_place_name] = before_place_name
-
                     return {"place_name": after_place_name, "reviews": review_jsons}
 
             
@@ -109,14 +113,14 @@ async def process_category(category: str, x: float, y: float):
                 print(f"process_place 오류 발생: {e}")
                 return None
         
-        
+        start_time = time.time()
         tasks = [process_place(place) for place in search_result.get('documents', [])]
         results = await asyncio.gather(*tasks)
+        end_time = time.time()
+        print(f"총 장소 정보 처리 시간: {end_time - start_time:.2f}초")
 
         # 전체 장소별 리뷰 데이터를 저장할 리스트
         all_places_reviews = [result for result in results if result is not None]
-
-        print(f"매핑한 dict: {mapping_place_name_dict}")
 
         # 모든 장소의 리뷰 데이터를 FAISS 벡터 DB에 저장, FAISS 인덱스, 메타데이터 리스트, 그리고 임베딩 벡터 리스트를 반환
         metadata_store, embedding_list = initialize_vector_db(all_places_reviews)

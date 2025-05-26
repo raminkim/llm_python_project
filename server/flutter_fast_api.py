@@ -63,7 +63,7 @@ async def read_list(category: str, x: float, y:float):
 @app.post("/insert_new_place")
 async def insert_new_place(placeName: str, userID: str, startDate: str, endDate: str):
     """
-    사용자가 추가한 장소 정보를 DB에 삽입입
+    사용자가 추가한 장소 정보를 DB에 삽입
 
     Args:
         placeName (str): 장소 이름

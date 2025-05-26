@@ -16,14 +16,14 @@ import langchain
 import logging # Python 기본 로깅 모듈
 
 
-try:
-    # Langchain의 전역 verbose 모드 활성화
-    langchain.globals.set_verbose(True)
-    # Langchain의 전역 debug 모드 활성화 (더 상세한 로그)
-    langchain.globals.set_debug(True)
-    print("정보: Langchain 전역 verbose 및 debug 모드가 활성화되었습니다.")
-except Exception as e_global_settings:
-    print(f"경고: Langchain 전역 verbose/debug 설정 중 문제 발생: {e_global_settings}")
+# try:
+#     # Langchain의 전역 verbose 모드 활성화
+#     langchain.globals.set_verbose(True)
+#     # Langchain의 전역 debug 모드 활성화 (더 상세한 로그)
+#     langchain.globals.set_debug(True)
+#     print("정보: Langchain 전역 verbose 및 debug 모드가 활성화되었습니다.")
+# except Exception as e_global_settings:
+#     print(f"경고: Langchain 전역 verbose/debug 설정 중 문제 발생: {e_global_settings}")
 
 # Python의 기본 로깅 레벨 설정 (Langchain 로그가 더 잘 보이도록)
 # 기본적으로 WARNING 레벨 이상만 출력될 수 있으므로 INFO 또는 DEBUG로 낮춥니다.
@@ -37,6 +37,7 @@ except Exception as e_logging_config:
     print(f"경고: Python 로깅 설정 중 문제 발생: {e_logging_config}")
 
 
+# TODO: 거리 추가, AI score 추가
 system_prompt = """다음 규칙을 반드시 준수하여 답변하세요.
 1. 제공된 '문맥(실제 방문자 리뷰들)'을 분석하여, 해당 장소에 대한 전반적인 긍정 또는 부정 수준을 **AI Score로 평가**합니다.
 2. 부정적인 내용에는 '배달을 하지 않음'과 같은 배달 관련 부정적 리뷰를 포함하여 AI score 산정 시 종합적으로 고려합니다.
@@ -49,7 +50,6 @@ system_prompt = """다음 규칙을 반드시 준수하여 답변하세요.
 
 다음은 현재 분석 대상 장소의 정보입니다. AI score 산정 시 아래 정보를 참고하십시오:
 - 장소명: [{place_name}]
-- 방문자 리뷰 평점: {review_info}
 
 문맥:
 {context}
@@ -73,7 +73,7 @@ async def generate_answer(queries: list, vector_store: FAISS):
     try:
         # Gemini LLM 초기화
         llm = ChatGoogleGenerativeAI(
-            model = "gemini-2.0-flash",
+            model = "gemini-2.0-flash-lite",
             temperature = 0,
             api_key = os.getenv("GEMINI_API_KEY")
         )
@@ -119,7 +119,6 @@ async def generate_answer(queries: list, vector_store: FAISS):
             # system_prompt의 {context}, {question} 자리에 각각 context, query를 넣는다.
             prompt = system_prompt.format(
                 place_name = place_name,
-                review_info = review_info,
                 context = context,
                 question = query
             )
