@@ -41,7 +41,7 @@ is_connected = False
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   #udp 소켓 생성. IPv4
 udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    #udp 소켓이 브로드캐스트 메시지를 보내도록 설정
 def broadcast():
-    while not is_connected: 
+    while True: 
         udp_socket.sendto(privateIP.encode(), ("255.255.255.255", 8888))
         time.sleep(5)
 broadcast_thread = threading.Thread(target=broadcast, daemon=True)
@@ -57,7 +57,10 @@ async def read_list(category: str, x: float, y:float):
     """
     특정 카테고리에 대한 분석 결과를 반환하는 API 엔드포인트.
     """
+    start = time.time()
     results = await process_category(category, x, y)
+    end = time.time()
+    print(f'총 실행 시간: {(end - start):.5f}')
     return JSONResponse(content=results, media_type="application/json; charset=utf-8")
 
 @app.post("/insert_new_place")
