@@ -25,16 +25,18 @@ import logging # Python 기본 로깅 모듈
 # except Exception as e_global_settings:
 #     print(f"경고: Langchain 전역 verbose/debug 설정 중 문제 발생: {e_global_settings}")
 
+
+
 # Python의 기본 로깅 레벨 설정 (Langchain 로그가 더 잘 보이도록)
 # 기본적으로 WARNING 레벨 이상만 출력될 수 있으므로 INFO 또는 DEBUG로 낮춥니다.
-try:
-    logging.basicConfig(level=logging.INFO)
-    # 특정 Langchain 로거의 레벨을 더 낮출 수도 있습니다.
-    logging.getLogger("langchain.retrievers.self_query").setLevel(logging.DEBUG)
-    # logging.getLogger("langchain").setLevel(logging.DEBUG) # 모든 Langchain 로그를 DEBUG로
-    print("정보: Python 로깅 레벨이 INFO로 설정되었고, langchain.retrievers.self_query는 DEBUG로 설정되었습니다.")
-except Exception as e_logging_config:
-    print(f"경고: Python 로깅 설정 중 문제 발생: {e_logging_config}")
+# try:
+#     logging.basicConfig(level=logging.INFO)
+#     # 특정 Langchain 로거의 레벨을 더 낮출 수도 있습니다.
+#     logging.getLogger("langchain.retrievers.self_query").setLevel(logging.DEBUG)
+#     # logging.getLogger("langchain").setLevel(logging.DEBUG) # 모든 Langchain 로그를 DEBUG로
+#     print("정보: Python 로깅 레벨이 INFO로 설정되었고, langchain.retrievers.self_query는 DEBUG로 설정되었습니다.")
+# except Exception as e_logging_config:
+#     print(f"경고: Python 로깅 설정 중 문제 발생: {e_logging_config}")
 
 
 # TODO: 거리 추가, AI score 추가
@@ -73,7 +75,7 @@ async def generate_answer(queries: list, vector_store: FAISS):
     try:
         # Gemini LLM 초기화
         llm = ChatGoogleGenerativeAI(
-            model = "gemini-2.0-flash-lite",
+            model = "gemini-2.0-flash",
             temperature = 0,
             api_key = os.getenv("GEMINI_API_KEY")
         )
@@ -98,7 +100,6 @@ async def generate_answer(queries: list, vector_store: FAISS):
         )
 
         async def generate_prompt(place_name: str, place_info: dict):
-            print(f"인풋: {place_info}")
 
             query = place_info.get('query')
             visitorReviewScore = place_info.get('visitorReviewScore', 'N/A') # 장소 리뷰 평점

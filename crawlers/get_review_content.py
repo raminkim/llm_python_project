@@ -199,7 +199,129 @@ async def async_request_review_graphql(place_id):
 #                 print(f"place_id 요청 실패: {response.status}")
 #                 return None
 
-async def async_request_place_id_graphql(keyword: str, x, y):
+
+def parse_and_extract_data_from_html(html_content: str):
+        # 에러 메시지
+    error_message = None
+    # place ID (고유)
+    place_id_str = None
+    # status (영업 전, 영업 중, 영업 종료)
+    status = None
+    # status에 대한 설명
+    status_description = None
+    # 장소 방문자 평점
+    visitorReviewScore = None
+    # 장소 방문자 리뷰 개수
+    visitorReviewCount = None
+    # 장소 전화번호
+    phone_number = None
+    # 장소 위도
+    latitude = None
+    # 장소 경도
+    longitude = None
+
+    try:
+        # 1. window.__APOLLO_STATE__ JSON 문자열 추출
+        apollo_match = re.search(r"window\.__APOLLO_STATE__\s*=\s*({.*?});", html_content, re.DOTALL)
+        
+        if not apollo_match:
+            error_message = "window.__APOLLO_STATE__를 찾을 수 없습니다."
+        else:
+            apollo_state_result = apollo_match.group(1)
+            
+            # 2. window.__APOLLO_STATE__ 찾아 JSON 파싱
+            apollo_state_json = json.loads(apollo_state_result)
+
+            # 3. 위 JSON에서 ROOT_QUERY 찾기
+            root_query = apollo_state_json.get("ROOT_QUERY")
+
+            if not root_query:
+                error_message = "ROOT_QUERY를 찾을 수 없습니다."
+            else:
+                places_result_data = None
+                for key, value in root_query.items():
+                    # 4. 장소 검색 결과(PlacesResult) 찾기
+                    if isinstance(value, dict) and value.get("__typename") == "PlacesResult" and "items" in value:
+                        places_result_data = value
+                        break
+                
+                if not places_result_data:
+                    error_message = "장소 검색 결과(PlacesResult)를 찾을 수 없습니다."
+                else:
+                    # 5. 장소 목록(items) 찾기
+                    items = places_result_data.get("items")
+
+                    if not items:
+                        error_message = "장소 목록(items)이 없습니다."
+                    else:
+                        # 6. 첫 번째 장소의 place ID (= PlaceSummary 값) 가져오기
+                        first_item_reference = items[0]
+                        place_id_str = first_item_reference.get('__ref')
+                        
+                        if not place_id_str:
+                            error_message = "첫 번째 장소의 PlaceSummary 값을 찾을 수 없습니다."
+                        else:
+                            # 7. 첫 번째 장소의 place ID를 이용해 상세 정보를 가져오기
+                            place_details = apollo_state_json.get(place_id_str)
+
+                            if not place_details:
+                                error_message = f"'{place_id_str}'에 해당하는 장소 상세 정보를 찾을 수 없습니다."
+                            else:
+                                # 8. 장소 ID 추출
+                                place_id_str = place_details.get("id")
+
+                                if not place_id_str:
+                                    error_message = "장소 ID를 상세 정보(place_details)에서 찾을 수 없습니다."
+
+                                # 8-1. 장소 방문자 평점 추출
+                                visitorReviewScore = place_details.get("visitorReviewScore")
+
+                                if not visitorReviewScore:
+                                    error_message = "장소 방문자 평점을 상세 정보(place_details)에서 찾을 수 없습니다."
+
+                                # 8-2. 장소 방문자 리뷰 개수 추출
+                                visitorReviewCount = place_details.get("visitorReviewCount")
+
+                                if not visitorReviewScore:
+                                    error_message = "장소 방문자 리뷰 개수를 상세 정보(place_details)에서 찾을 수 없습니다."
+                                
+                                # 8-3. 장소 전화번호 추출
+                                phone_number = place_details.get("phone")
+
+                                if not phone_number:
+                                    error_message = "장소 전화번호를 상세 정보(place_details)에서 찾을 수 없습니다."
+
+                                # 8-4. 위도 추출
+                                latitude = place_details.get("y")
+                                if not latitude:
+                                    error_message = "위도를 상세 정보(place_details)에서 찾을 수 없습니다."
+
+                                # 8-5. 경도 추출
+                                longitude = place_details.get("x")
+                                if not longitude:
+                                    error_message = "경도를 상세 정보(place_details)에서 찾을 수 없습니다."
+                                
+
+                                # 9. 영업 중인지에 대한 정보를 가져오기
+                                newBusinessHours = place_details.get("newBusinessHours")
+                                
+                                # 만약 영업에 대한 정보(newBusinessHours)가 null이라면, 네이버 지도에는 해당 정보가 없는 것이다.
+                                if not newBusinessHours:
+                                    error_message = "영업에 대한 정보(newBusinessHours)를 상세 정보(place_details)에서 찾을 수 없습니다."
+                                else:
+                                    status = newBusinessHours["status"]
+                                    status_description = newBusinessHours["description"]
+
+                    
+
+    except Exception as e:
+        error_message = f"정보 추출 중 알 수 없는 오류 발생: {str(e)}"
+
+    return error_message, place_id_str, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude
+
+
+
+def request_place_id_graphql(keyword: str, x, y):
     """
     네이버 지도에서 특정 키워드로 장소를 검색하고,
     검색 결과 페이지의 HTML에서 window.__APOLLO_STATE__를 파싱하여
@@ -247,135 +369,23 @@ async def async_request_place_id_graphql(keyword: str, x, y):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.31.304.16 Safari/537.36'
     }
 
-    # 에러 메시지
-    error_message = None
-    # place ID (고유)
-    place_id_str = None
-    # status (영업 전, 영업 중, 영업 종료)
-    status = None
-    # status에 대한 설명
-    status_description = None
-    # 장소 방문자 평점
-    visitorReviewScore = None
-    # 장소 방문자 리뷰 개수
-    visitorReviewCount = None
-    # 장소 전화번호
-    phone_number = None
-    # 장소 위도
-    latitude = None
-    # 장소 경도
-    longitude = None
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params, headers=headers) as response:
-            if response.status == 200:
+    start_time = time.time()
+    with requests.Session() as session:
+        with session.get(url, params=params, headers=headers) as response:
+            if response.status_code == 200:
+                end_time = time.time()
+                print(f"{keyword} 요청에 대한 graphql HTTP 요청 응답 시간: {end_time - start_time:.2f}초")
 
                 # 응답 텍스트를 비동기적으로 읽어옴
-                html_content = await response.text(encoding='UTF-8')
+                html_content = response.content.decode('utf-8')
                 # # # 디버깅용 (html_content 출력)
                 # with open('html_content.txt', 'a', encoding='utf-8') as f:
                 #     f.write(html_content+"\n")
                 #     f.write("="*40+"\n")
-                    
+                
+                # HTML에서 필요한 데이터를 추출하는 함수롤 호출한다. 이때, 이 함수는 CPU 바운드 작업이므로, asyncio.to_thread를 사용하여 비동기적으로 실행한다.
+                error_message, place_id_str, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = parse_and_extract_data_from_html(html_content)
 
-                try:
-                    # 1. window.__APOLLO_STATE__ JSON 문자열 추출
-                    apollo_match = re.search(r"window\.__APOLLO_STATE__\s*=\s*({.*?});", html_content, re.DOTALL)
-                    
-                    if not apollo_match:
-                        error_message = "window.__APOLLO_STATE__를 찾을 수 없습니다."
-                    else:
-                        apollo_state_result = apollo_match.group(1)
-                        
-                        # 2. window.__APOLLO_STATE__ 찾아 JSON 파싱
-                        apollo_state_json = json.loads(apollo_state_result)
-
-                        # 3. 위 JSON에서 ROOT_QUERY 찾기
-                        root_query = apollo_state_json.get("ROOT_QUERY")
-
-                        if not root_query:
-                            error_message = "ROOT_QUERY를 찾을 수 없습니다."
-                        else:
-                            places_result_data = None
-                            for key, value in root_query.items():
-                                # 4. 장소 검색 결과(PlacesResult) 찾기
-                                if isinstance(value, dict) and value.get("__typename") == "PlacesResult" and "items" in value:
-                                    places_result_data = value
-                                    break
-                            
-                            if not places_result_data:
-                                error_message = "장소 검색 결과(PlacesResult)를 찾을 수 없습니다."
-                            else:
-                                # 5. 장소 목록(items) 찾기
-                                items = places_result_data.get("items")
-
-                                if not items:
-                                    error_message = "장소 목록(items)이 없습니다."
-                                else:
-                                    # 6. 첫 번째 장소의 place ID (= PlaceSummary 값) 가져오기
-                                    first_item_reference = items[0]
-                                    place_id_str = first_item_reference.get('__ref')
-                                    
-                                    if not place_id_str:
-                                        error_message = "첫 번째 장소의 PlaceSummary 값을 찾을 수 없습니다."
-                                    else:
-                                        # 7. 첫 번째 장소의 place ID를 이용해 상세 정보를 가져오기
-                                        place_details = apollo_state_json.get(place_id_str)
-
-                                        if not place_details:
-                                            error_message = f"'{place_id_str}'에 해당하는 장소 상세 정보를 찾을 수 없습니다."
-                                        else:
-                                            # 8. 장소 ID 추출
-                                            place_id_str = place_details.get("id")
-
-                                            if not place_id_str:
-                                                error_message = "장소 ID를 상세 정보(place_details)에서 찾을 수 없습니다."
-
-                                            # 8-1. 장소 방문자 평점 추출
-                                            visitorReviewScore = place_details.get("visitorReviewScore")
-
-                                            if not visitorReviewScore:
-                                                error_message = "장소 방문자 평점을 상세 정보(place_details)에서 찾을 수 없습니다."
-
-                                            # 8-2. 장소 방문자 리뷰 개수 추출
-                                            visitorReviewCount = place_details.get("visitorReviewCount")
-
-                                            if not visitorReviewScore:
-                                                error_message = "장소 방문자 리뷰 개수를 상세 정보(place_details)에서 찾을 수 없습니다."
-                                            
-                                            # 8-3. 장소 전화번호 추출
-                                            phone_number = place_details.get("phone")
-
-                                            if not phone_number:
-                                                error_message = "장소 전화번호를 상세 정보(place_details)에서 찾을 수 없습니다."
-
-                                            # 8-4. 위도 추출
-                                            latitude = place_details.get("y")
-                                            if not latitude:
-                                                error_message = "위도를 상세 정보(place_details)에서 찾을 수 없습니다."
-
-                                            # 8-5. 경도 추출
-                                            longitude = place_details.get("x")
-                                            if not longitude:
-                                                error_message = "경도를 상세 정보(place_details)에서 찾을 수 없습니다."
-                                            
-
-                                            # 9. 영업 중인지에 대한 정보를 가져오기
-                                            newBusinessHours = place_details.get("newBusinessHours")
-                                            
-                                            # 만약 영업에 대한 정보(newBusinessHours)가 null이라면, 네이버 지도에는 해당 정보가 없는 것이다.
-                                            if not newBusinessHours:
-                                                error_message = "영업에 대한 정보(newBusinessHours)를 상세 정보(place_details)에서 찾을 수 없습니다."
-                                            else:
-                                                status = newBusinessHours["status"]
-                                                status_description = newBusinessHours["description"]
-
-                                    
-
-                except Exception as e:
-                    error_message = f"정보 추출 중 알 수 없는 오류 발생: {str(e)}"
-
-        
                 print(f"=== request_place_id_graphql 결과 ===")
                 if error_message:
                     print(error_message)
@@ -417,4 +427,4 @@ async def async_parse_review_content(json_data):
 if __name__ == '__main__':
     x = "127.727872"
     y = "37.905947"
-    async_request_place_id_graphql("만석식당 강원대점", x, y)
+    request_place_id_graphql("만석식당 강원대점", x, y)
