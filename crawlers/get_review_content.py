@@ -173,31 +173,6 @@ async def async_request_review_graphql(place_id):
             else:
                 print(f"graphql 요청 실패: {response.status}")
                 return None
-    
-# async def async_request_place_id_graphql(keyword: str, x, y):
-#     url = 'https://map.naver.com/p/api/search/instant-search'
-#     params = {
-#     'query': keyword,
-#     'coords': f'{y},{x}'
-#     # 'coords': f'37.87336559999969,127.74447840000278'
-#     }
-#     headers = {
-#     'accept': 'application/json, text/plain, */*',
-#     'accept-language': 'ko-KR,ko',
-#     'referer': 'https://map.naver.com/p/search/',
-#     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.31.304.16 Safari/537.36'
-#     }
-
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get(url, params=params, headers=headers) as response:
-#             if response.status == 200:
-#                 data = await response.json()
-#                 for place in data["place"]:
-#                     print(f"place: {place}")
-#                     return place["id"]
-#             else:
-#                 print(f"place_id 요청 실패: {response.status}")
-#                 return None
 
 
 def parse_and_extract_data_from_html(html_content: str):

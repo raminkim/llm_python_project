@@ -138,6 +138,7 @@ async def process_category(category: str, x: float, y: float):
                     # review_list는 하나의 장소에 대한 리뷰들을 리스트로 담고 있다.
                     review_list = [review for review in reviews if len(review) > 5] # review_list 문제 X
 
+                    print(f"{after_place_name} 리뷰 리스트 출력: {review_list}")
 
                     # 리뷰 데이터값 -> JSON으로 바꿔 리스트화 시키기
                     start_time = time.time()
@@ -205,7 +206,7 @@ async def process_category(category: str, x: float, y: float):
             place_data['place_name'] : {
                 "query": f"{place_data['place_name']}을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘.",
                 "status_description": place_name_to_details.get(place_data['place_name']).get('status_description'), # 영업 상태 정보에 대한 설명(description)
-                "visitorReviewScore": place_name_to_details.get(place_data['place_name']).get('vvisitorReviewScore'), # 장소 리뷰 평점
+                "visitorReviewScore": place_name_to_details.get(place_data['place_name']).get('visitorReviewScore'), # 장소 리뷰 평점
                 "visitorReviewCount": place_name_to_details.get(place_data['place_name']).get('visitorReviewCount') # 장소 리뷰 수
             }
             for place_data in all_places_reviews
