@@ -57,16 +57,17 @@ async def read_list(category: str, x: float, y:float):
     """
     특정 카테고리에 대한 분석 결과를 반환하는 API 엔드포인트.
     """
-    start = time.time()
+    start_time = time.time()
     results = await process_category(category, x, y)
-    end = time.time()
-    print(f'총 실행 시간: {(end - start):.5f}')
+    end_time = time.time()
+    print(f"총 요청 처리 시간: {end_time-start_time:.2f}")
+
     return JSONResponse(content=results, media_type="application/json; charset=utf-8")
 
 @app.post("/insert_new_place")
 async def insert_new_place(placeName: str, userID: str, startDate: str, endDate: str):
     """
-    사용자가 추가한 장소 정보를 DB에 삽입입
+    사용자가 추가한 장소 정보를 DB에 삽입
 
     Args:
         placeName (str): 장소 이름
