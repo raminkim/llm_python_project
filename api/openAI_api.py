@@ -1,4 +1,5 @@
 import asyncio
+from langchain_chroma import Chroma
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -25,16 +26,18 @@ import logging # Python 기본 로깅 모듈
 # except Exception as e_global_settings:
 #     print(f"경고: Langchain 전역 verbose/debug 설정 중 문제 발생: {e_global_settings}")
 
+
+
 # Python의 기본 로깅 레벨 설정 (Langchain 로그가 더 잘 보이도록)
 # 기본적으로 WARNING 레벨 이상만 출력될 수 있으므로 INFO 또는 DEBUG로 낮춥니다.
-try:
-    logging.basicConfig(level=logging.INFO)
-    # 특정 Langchain 로거의 레벨을 더 낮출 수도 있습니다.
-    logging.getLogger("langchain.retrievers.self_query").setLevel(logging.DEBUG)
-    # logging.getLogger("langchain").setLevel(logging.DEBUG) # 모든 Langchain 로그를 DEBUG로
-    print("정보: Python 로깅 레벨이 INFO로 설정되었고, langchain.retrievers.self_query는 DEBUG로 설정되었습니다.")
-except Exception as e_logging_config:
-    print(f"경고: Python 로깅 설정 중 문제 발생: {e_logging_config}")
+# try:
+#     logging.basicConfig(level=logging.INFO)
+#     # 특정 Langchain 로거의 레벨을 더 낮출 수도 있습니다.
+#     logging.getLogger("langchain.retrievers.self_query").setLevel(logging.DEBUG)
+#     # logging.getLogger("langchain").setLevel(logging.DEBUG) # 모든 Langchain 로그를 DEBUG로
+#     print("정보: Python 로깅 레벨이 INFO로 설정되었고, langchain.retrievers.self_query는 DEBUG로 설정되었습니다.")
+# except Exception as e_logging_config:
+#     print(f"경고: Python 로깅 설정 중 문제 발생: {e_logging_config}")
 
 
 # TODO: 거리 추가, AI score 추가
@@ -58,13 +61,13 @@ system_prompt = """다음 규칙을 반드시 준수하여 답변하세요.
 {question}
 """.strip()
 
-async def generate_answer(queries: list, vector_store: FAISS):
+async def generate_answer(queries: list, vector_store: Chroma):
     """
     미리 생성된 Langchain FAISS 벡터 저장소를 사용하여 사용자 질의에 대한 답변을 생성합니다.
 
     Args:
         place_query_inputs: 각 장소별 system prompt에 사용될 쿼리, 현재 영업 상태 정보, 영업 상태 정보에 대한 설명(description), 장소 리뷰 평점, 장소 리뷰 수가 들어있는 dictionary.
-        vector_store: 미리 생성된 Langchain FAISS 벡터 저장소 객체
+        vector_store: 미리 생성된 Langchain Chroma 벡터 저장소 객체
 
     Returns:
         생성된 답변 리스트
@@ -73,7 +76,7 @@ async def generate_answer(queries: list, vector_store: FAISS):
     try:
         # Gemini LLM 초기화
         llm = ChatGoogleGenerativeAI(
-            model = "gemini-2.0-flash-lite",
+            model = "gemini-2.0-flash",
             temperature = 0,
             api_key = os.getenv("GEMINI_API_KEY")
         )
@@ -98,7 +101,6 @@ async def generate_answer(queries: list, vector_store: FAISS):
         )
 
         async def generate_prompt(place_name: str, place_info: dict):
-            print(f"인풋: {place_info}")
 
             query = place_info.get('query')
             visitorReviewScore = place_info.get('visitorReviewScore', 'N/A') # 장소 리뷰 평점
@@ -107,10 +109,21 @@ async def generate_answer(queries: list, vector_store: FAISS):
             # query(장소명 포함)과 관련된 documents(리뷰들)을 담은 리스트인 docs.
             docs = await retriever.ainvoke(query)
 
+            # 중복된 page_content를 추적하기 위한 set은 여전히 필요합니다.
+            unique_docs_content_for_comp = set()
+
+            # 리스트 컴프리헨션으로 deduplicated_docs 생성
+            deduplicated_docs = [
+                doc
+                for doc in docs
+                if doc.page_content not in unique_docs_content_for_comp # 현재 doc.page_content가 아직 unique_docs_content_for_comp에 없으면,
+                and not unique_docs_content_for_comp.add(doc.page_content) # unique_docs_content_for_comp에 해당 내용을 추가한다. add는 추가되면 None을 반환하므로 not으로 처리하였다.
+            ]
+
             # 리스트 docs를 통해 "-[장소명] (리뷰)" 형태의 context를 생성한다.
             context = "\n".join(
                 f"- [장소명 : {doc.metadata.get('place_name', '알 수 없음')}] {doc.page_content}"
-                for doc in docs
+                for doc in deduplicated_docs
             ).strip()
 
             # 리뷰 평점, 리뷰 수에 대해 별점 = 4.52 점(리뷰 268개 기반)과 같은 문구를 포함한 문자열
@@ -123,9 +136,9 @@ async def generate_answer(queries: list, vector_store: FAISS):
                 question = query
             )
 
-            with open('output.txt', 'a', encoding='utf-8') as f:
-                f.write(prompt)
-                f.write("="*40)
+            # with open('output.txt', 'a', encoding='utf-8') as f:
+            #     f.write(prompt)
+            #     f.write("="*40)
             return prompt
 
         generate_prompt_tasks = [
@@ -137,40 +150,6 @@ async def generate_answer(queries: list, vector_store: FAISS):
         # print(prompts)
         results = await llm.abatch(prompts)
         # print(f"답변 결과: {results}")
-
-    
-
-        # if "source_documents" in result and result["source_documents"]:
-        #     for i, doc in enumerate(result["source_documents"]):
-        #         place_name = doc.metadata.get("place_name", "장소명 없음")
-
-        #         review_id = doc.metadata.get("review_id", "ID 없음") # 리뷰 ID가 있다면 출력
-
-        #         print(f"\n📄 문서 {i+1}:")
-        #         print(f"  📍 장소명  : {place_name}")
-        #         print(target_place_name == place_name)
-        #         print(f"  🆔 리뷰 ID : {review_id}")
-        #         print(f"  📝 내용 (일부):")
-                
-        #         # page_content를 적절한 길이로 나누어 여러 줄로 출력
-        #         content = doc.page_content
-        #         # 보기 좋게 80자 단위로 줄바꿈하며, 최대 5줄 (400자) 정도만 출력
-        #         max_lines_to_show = 5
-        #         chars_per_line = 80
-        #         for line_num, j in enumerate(range(0, len(content), chars_per_line)):
-        #             if line_num >= max_lines_to_show:
-        #                 print(f"     ...")
-        #                 break
-        #             print(f"     {content[j:j+chars_per_line]}")
-                
-        #         print("-" * 50) # 각 문서 구분선
-        # else:
-        #     print("  검색된 문서가 없습니다.")
-        # print("==================================================\n")
-        # --- 출력 코드 끝 ---
-
-    
-
 
         return [result.content for result in results]
     

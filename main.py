@@ -1,10 +1,10 @@
 import asyncio
 from api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
-from crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, async_request_place_id_graphql
+from crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
 from processing.review_to_json import async_review_to_json
 from embeddings_db.initialize_vector_db import initialize_vector_db
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
@@ -15,17 +15,40 @@ import os
 
 import traceback
 
+NAVER_API_SEMAPHORE = asyncio.Semaphore(2)  # 네이버 API 호출을 동시성으로 제한하기 위한 세마포어 (2개로 제한)
+REQUEST_INTERVAL_NAVER = 1 / 8  # 네이버 API 호출 간격 (초 단위)
+
+NAVER_SEMAPHORE = asyncio.Semaphore(4)  # 네이버지도 호출을 동시성으로 제한하기 위한 세마포어 (4개로 제한)
+
+async def initialize_chroma() -> Chroma:
+    start_time = time.time()
+    # 쿼리 임베딩용 모델
+    query_embedding_function = await asyncio.to_thread(OpenAIEmbeddings, model = "text-embedding-3-small", openai_api_key = os.getenv("OPENAI_API_KEY"))
+
+    # generate_answer 함수에 전달할 langchain_vector_store 객체
+    langchain_vector_store = await asyncio.to_thread(Chroma, collection_name = "review_collection_chroma", embedding_function = query_embedding_function)
+
+    print("정보: 빈 Chroma 벡터 저장소 객체가 생성되었습니다.")
+    end_time = time.time()
+    print(f"Chroma 벡터 저장소 객체 생성 시간: {end_time - start_time:.2f}초")
+
+    return langchain_vector_store
+
 
 async def process_category(category: str, x: float, y: float):
     """
     특정 카테고리에 대한 리뷰를 분석하고, 결과를 반환하는 함수이다.
     """
 
+    # chroma를 초기화 시키는 작업을 백그라운드에서 실행하고, 반환값이 들어갈 langchain_vector_store 변수를 초기화
+    langchain_vector_store = None
+    chroma_init_task = asyncio.create_task(initialize_chroma())
+
     # OpenAI client 정의
-    client = OpenAI(api_key = os.getenv("OPENAI_API_KEY")) # gemini 2.0 나 2.5 flash 2.5로 변경해보기
+    client = AsyncOpenAI(api_key = os.getenv("OPENAI_API_KEY"))
 
     start_time = time.time()
-    search_result = kakaomap_rest_api.search_by_category(x, y, category, 15)
+    search_result = await asyncio.to_thread(kakaomap_rest_api.search_by_category, x, y, category, 15)
     end_time = time.time()
     print(f"카카오맵 주변 카테고리 검색 시간: {end_time - start_time:.2f}초")
 
@@ -35,7 +58,7 @@ async def process_category(category: str, x: float, y: float):
 
     if search_result:
         print("카카오맵 주변 카테고리 불러오기 성공!")
-        print("춘천 주변 카페 검색 결과:")
+        print("춘천 주변 장소 검색 결과:")
 
         async def process_place(place):
             try:
@@ -45,7 +68,8 @@ async def process_category(category: str, x: float, y: float):
                 before_place_name = place.get('place_name')
 
                 start_time = time.time()
-                documents = kakaomap_transfrom_address.transform_coordinates(place_x, place_y)['documents'][0]
+                documents = await asyncio.to_thread(kakaomap_transfrom_address.transform_coordinates, place_x, place_y)
+                documents = documents['documents'][0]
                 end_time = time.time()
                 print(f"카카오 REST API 좌표 변환 시간: {end_time - start_time:.2f}초")
 
@@ -59,25 +83,34 @@ async def process_category(category: str, x: float, y: float):
                 place_x, place_y = documents['x'], documents['y']
 
                 # 네이버 지역 검색 API 기준의 place name 받아오기
-                start_time = time.time()
-                items = naver_search_api.naver_search_api(f'{region_2depth_name} {region_3depth_name} {before_place_name}')['items']
-                end_time = time.time()
-                print(f"네이버 지역 검색 API 시간: {end_time - start_time:.2f}초")
+
+                async with NAVER_API_SEMAPHORE:
+                    await asyncio.sleep(REQUEST_INTERVAL_NAVER)  # 네이버 API 호출 간격 조정
+
+                    start_time = time.time()
+                    items = await asyncio.to_thread(naver_search_api.naver_search_api, f'{region_2depth_name} {region_3depth_name} {before_place_name}')
+                    end_time = time.time()
+                    print(f"네이버 지역 검색 API 시간: {end_time - start_time:.2f}초")
+                    print(f"네이버 지역 검색 API 결과: {type(items)}, {items}")
 
                 # items가 비어있다면, 검색 결과가 없는 것이므로 None을 반환.
                 if not items:
                     print("naver 검색 api의 검색 결과가 없습니다.")
                     return None
-
+                
                 # <b></b> 등 html 태그 제거
-                after_place_name = re.sub(r"<[^>]+>", "", items[0]['title'])
-                print(after_place_name)
+                after_place_name = re.sub(r"<[^>]+>", "", items['items'][0]['title'])
+                print(f"html 태그를 제거한 결과값: {after_place_name}")
 
-                # 카카오맵 GraphQL API를 이용해 장소 ID, 영업 상태 정보, 영업 상태 정보에 대한 설명(description), 장소 리뷰 평점, 장소 리뷰 수, 전화번호, 위도, 경도를 받아오기
-                start_time = time.time()
-                place_id, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = await async_request_place_id_graphql(after_place_name, place_x, place_y)
-                end_time = time.time()
-                print(f"카카오맵 GraphQL API 시간: {end_time - start_time:.2f}초")
+                # 네이버지도 GraphQL API를 이용해 장소 ID, 영업 상태 정보, 영업 상태 정보에 대한 설명(description), 장소 리뷰 평점, 장소 리뷰 수, 전화번호, 위도, 경도를 받아오기
+
+                async with NAVER_SEMAPHORE:
+                    await asyncio.sleep(REQUEST_INTERVAL_NAVER)
+
+                    start_time = time.time()
+                    place_id, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = await asyncio.to_thread(request_place_id_graphql, after_place_name, place_x, place_y)
+                    end_time = time.time()
+                    print(f"네이버지도 GraphQL API 시간: {end_time - start_time:.2f}초")
 
                 place_name_to_details[after_place_name] = {
                     "x": longitude, # x 좌표
@@ -90,40 +123,55 @@ async def process_category(category: str, x: float, y: float):
                 }
 
                 if place_id:
+                    start_time = time.time()
+                    # 카카오맵 GraphQL API를 이용해 리뷰 데이터를 받아오기
                     request_result = await async_request_review_graphql(place_id)
-                    reviews = await async_parse_review_content(request_result)
+                    end_time = time.time()
+                    print(f"네이버지도 GraphQL API 리뷰 데이터 요청 시간: {end_time - start_time:.2f}초")
 
-                    review_list = []
+                    start_time = time.time()
+                    # 네이버지도에 GRAPHQL 요청으로 받은 리뷰 데이터가 포함된 JSON 데이터를 파싱하여 리뷰 내용만 추출
+                    reviews = await async_parse_review_content(request_result) # reviews 문제 X
+                    end_time = time.time()
+                    print(f"네이버지도 GraphQL API 리뷰 데이터 파싱 시간: {end_time - start_time:.2f}초")
 
-                    # reviews 문제 X
-                    for review in reviews:
-                        # 리뷰 내용이 5글자 이하라면 리뷰에 포함하지 않는다.
-                        if (len(review) > 5):
-                            review_list.append(review)
+                    # review_list는 하나의 장소에 대한 리뷰들을 리스트로 담고 있다.
+                    review_list = [review for review in reviews if len(review) > 5] # review_list 문제 X
 
-                    print(f"review_list: {review_list}")
+                    print(f"{after_place_name} 리뷰 리스트 출력: {review_list}")
 
                     # 리뷰 데이터값 -> JSON으로 바꿔 리스트화 시키기
+                    start_time = time.time()
                     review_jsons = await async_review_to_json(review_list, client)
+                    end_time = time.time()
+                    print(f"json으로 바꿔 리스트화 시키는데 걸린 시간: {end_time - start_time:.2f}")
 
                     return {"place_name": after_place_name, "reviews": review_jsons}
 
             
             except Exception as e:
                 print(f"process_place 오류 발생: {e}")
+                exc_str = traceback.format_exc()
+                print(exc_str)
                 return None
         
         start_time = time.time()
+
         tasks = [process_place(place) for place in search_result.get('documents', [])]
         results = await asyncio.gather(*tasks)
+
         end_time = time.time()
         print(f"총 장소 정보 처리 시간: {end_time - start_time:.2f}초")
 
         # 전체 장소별 리뷰 데이터를 저장할 리스트
         all_places_reviews = [result for result in results if result is not None]
 
+
         # 모든 장소의 리뷰 데이터를 FAISS 벡터 DB에 저장, FAISS 인덱스, 메타데이터 리스트, 그리고 임베딩 벡터 리스트를 반환
-        metadata_store, embedding_list = initialize_vector_db(all_places_reviews)
+        start_time = time.time()
+        metadata_store, embedding_list = await asyncio.to_thread(initialize_vector_db, all_places_reviews)
+        end_time = time.time()
+        print(f"메타데이터 리스트, 그리고 임베딩 벡터 리스트를 반환하는 시간: {end_time - start_time:.2f}초")
 
 
         # Langchain FAISS 벡터 저장소 생성
@@ -131,24 +179,19 @@ async def process_category(category: str, x: float, y: float):
             # Langchain을 위한 text:embedding pair를 리스트로 만들기
             texts_list = [item["text"] for item in metadata_store]
 
-            # 쿼리 임베딩용 모델
-            query_embedding_function = OpenAIEmbeddings(
-                model = "text-embedding-3-small", # get_embedding.py와 같은 임베딩 모델
-                openai_api_key = os.getenv("OPENAI_API_KEY")
-            )
+            # 백그라운드로 실행시킨 chroma 객체를 가져온다.
+            langchain_vector_store = await chroma_init_task
 
-            # generate_answer 함수에 전달할 langchain_vector_store 객체
-            langchain_vector_store = Chroma(
-                collection_name = "review_collection_chroma",
-                embedding_function = query_embedding_function,
+            # TODO: Chroma 벡터 add_texts 시간 단축
+            start_time = time.time()
+            await asyncio.to_thread(
+                langchain_vector_store.add_texts,
+                    texts=texts_list,
+                    embeddings=embedding_list,  # 미리 계산된 임베딩 벡터 리스트
+                    metadatas=metadata_store,
             )
-            print("정보: 빈 Chroma 벡터 저장소 객체가 생성되었습니다.")
-
-            langchain_vector_store.add_texts(
-                texts=texts_list,
-                embeddings=embedding_list,  # 미리 계산된 임베딩 벡터 리스트
-                metadatas=metadata_store,
-            )
+            end_time = time.time()
+            print(f"Chroma 벡터 저장소에 데이터 추가 시간: {end_time - start_time:.2f}초")
         
         else:
             print("오류: Chroma 벡터 저장소를 생성하지 못하였습니다.")
@@ -163,7 +206,7 @@ async def process_category(category: str, x: float, y: float):
             place_data['place_name'] : {
                 "query": f"{place_data['place_name']}을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘.",
                 "status_description": place_name_to_details.get(place_data['place_name']).get('status_description'), # 영업 상태 정보에 대한 설명(description)
-                "visitorReviewScore": place_name_to_details.get(place_data['place_name']).get('vvisitorReviewScore'), # 장소 리뷰 평점
+                "visitorReviewScore": place_name_to_details.get(place_data['place_name']).get('visitorReviewScore'), # 장소 리뷰 평점
                 "visitorReviewCount": place_name_to_details.get(place_data['place_name']).get('visitorReviewCount') # 장소 리뷰 수
             }
             for place_data in all_places_reviews
@@ -205,6 +248,8 @@ async def process_category(category: str, x: float, y: float):
         
 
         # process_answer 병렬처리
+        start_time = time.time()
+
         process_tasks = [
             process_answer(place_data, answer)
             for place_data, answer in zip(all_places_reviews, answers)
@@ -213,6 +258,9 @@ async def process_category(category: str, x: float, y: float):
 
         # 결과 중 None이 아닌 것만 필터링
         results_json_list = [result for result in results if result is not None]
+
+        end_time = time.time()
+        print(f"각 장소별 AI score 추출 및 결과 정리 시간: {end_time - start_time:.2f}초")
 
         return results_json_list
     else:

@@ -57,7 +57,11 @@ async def read_list(category: str, x: float, y:float):
     """
     특정 카테고리에 대한 분석 결과를 반환하는 API 엔드포인트.
     """
+    start_time = time.time()
     results = await process_category(category, x, y)
+    end_time = time.time()
+    print(f"총 요청 처리 시간: {end_time-start_time:.2f}")
+
     return JSONResponse(content=results, media_type="application/json; charset=utf-8")
 
 @app.post("/insert_new_place")
