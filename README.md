@@ -24,17 +24,18 @@
   FastAPI 서버를 실행하기 위한 Python 환경이 필요합니다. 개발에 3.10.16 버전을 사용하여 해당 버전으로 기술하였습니다.
 
 - **pip** (Python 패키지 관리자) 설치: Python 패키지를 설치하고 관리하는 데 사용됩니다. \n Python 설치 시 함께 설치되는 경우가 많습니다.
-  - **fastapi**: Web Framework
-  - **uvicorn**: ASGI 서버
-  - **openAI**: OpenAI Python 라이브러리
-  - **requests**: HTTP 요청 라이브러리 (API, REST API 호출에 사용됩니다.)
-  - **python-dotenv**: 환경 변수 로드 라이브러리
-  - **lark**
-  - **langchain_community**
-  - **langchain_openai**
-  - **langchain_chroma**
-  - **pymysql**
-  - **haversine**
+  - 패키지 설치를 돕는 'package_install' 실행 방법
+
+    1. **실행 권한 부여**  
+       ```bash
+       chmod +x package_install.sh
+       ```
+    2. **패키지 설치 스크립트 실행**
+        ```bash
+         ./lib_install.sh
+         ```
+    3. **(선택) 가상환경 활성화**<br>
+        만약 가상환경을 이미 만들어 두셨다면, ```source .venv/bin/activate```을 주석 해제하세요!
 
 - **외부 API KEY**: 프로젝트에서 사용하는 외부 API 키가 필요합니다.
   - **OpenAI API KEY**
