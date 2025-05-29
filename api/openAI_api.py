@@ -43,15 +43,26 @@ import logging # Python 기본 로깅 모듈
 # TODO: 거리 추가, AI score 추가
 system_prompt = """다음 규칙을 반드시 준수하여 답변하세요.
 1. 제공된 '문맥(실제 방문자 리뷰들)'을 분석하여, 해당 장소에 대한 전반적인 긍정 또는 부정 수준을 **AI Score로 평가**합니다.
-2. 부정적인 내용에는 '배달을 하지 않음'과 같은 배달 관련 부정적 리뷰를 포함하여 AI score 산정 시 종합적으로 고려합니다.
-3. 다른 답변은 하지 않고, **'AI score: n점'** 형식으로 답변합니다. (점수는 0점에서 100점 사이이며, 높을수록 긍정적인 평가를 의미합니다.)
+2. 부정적인 내용에는 '배달을 하지 않음'과 같은 배달 관련 부정적 리뷰를 포함하여 AI Score 산정 시 종합적으로 고려합니다.
+3. 답변은 반드시 다음 JSON 형식으로만 제공해야 하며, 다른 내용은 일절 포함하지 않습니다:
+{{
+  "AI_score": 리뷰를 기반으로 산정된 긍정도 점수(float, 0~10점)
+}}
+점수는 소수점도 가능합니다.
 4. '문맥'에 분석할 내용이 있다면, 반드시 그 내용을 기반으로 AI Score를 산정해야 합니다.
-    a. AI Score는 주로 **'문맥'에서 파악된 긍정적 내용의 비중과 만족도**를 반영하여 0~100점으로 결정합니다.
-    b. 아래 제공되는 '방문자 리뷰 평점'은 '문맥'의 내용이 매우 제한적이거나 해석이 모호할 경우, AI score 산정에 **참고할 수 있는 보조적인 정보**로 활용합니다. 단, '문맥'에서 명확히 드러나는 내용이 있다면 '문맥'의 내용을 우선으로 합니다.
+    a. AI Score는 주로 **'문맥'에서 파악된 긍정적 내용의 비중과 만족도**를 반영하여 결정합니다.
 5. '질문'에 명시된 장소 이름과 '문맥'에 있는 [장소명 : ...] 부분이 일치하는 리뷰들을 주로 참조하여 답변합니다. (이는 아래 '현재 분석 대상 장소 정보'의 장소명과도 일치해야 합니다.)
-6. '문맥'이 전혀 제공되지 않았거나, "리뷰 없음"과 같이 분석할 내용이 없는 경우에는 **'AI score: 0점'** 으로 답변합니다.
+6. '문맥'이 전혀 제공되지 않았거나, "리뷰 없음"과 같이 분석할 내용이 없는 경우에는 **'AI Score': 0** 으로 답변합니다.
 
-다음은 현재 분석 대상 장소의 정보입니다. AI score 산정 시 아래 정보를 참고하십시오:
+AI Score 기준:
+- **10점**: 리뷰가 압도적으로 긍정적이며, 매우 높은 만족도를 나타내는 경우
+- **8점**: 리뷰가 대부분 긍정적이며, 일부 사소한 문제만 존재하는 경우
+- **6점**: 리뷰가 전반적으로 긍정적이지만, 명확한 단점 또는 불만족 요소가 다수 존재하는 경우
+- **4점**: 긍정과 부정의 비율이 비슷하거나, 방문자들이 뚜렷한 불만을 자주 표출하는 경우
+- **2점**: 부정적인 리뷰가 대부분이며, 긍정적 요소가 극히 제한적인 경우
+- **0점**: 리뷰가 전부 부정적이거나, 분석할 내용이 아예 없는 경우
+
+다음은 현재 분석 대상 장소의 정보입니다. AI Score 산정 시 아래 정보를 참고하십시오:
 - 장소명: [{place_name}]
 
 문맥:
@@ -103,8 +114,6 @@ async def generate_answer(queries: list, vector_store: Chroma):
         async def generate_prompt(place_name: str, place_info: dict):
 
             query = place_info.get('query')
-            visitorReviewScore = place_info.get('visitorReviewScore', 'N/A') # 장소 리뷰 평점
-            visitorReviewCount = place_info.get('visitorReviewCount', 'N/A') # 장소 리뷰 수
 
             # query(장소명 포함)과 관련된 documents(리뷰들)을 담은 리스트인 docs.
             docs = await retriever.ainvoke(query)
@@ -125,9 +134,6 @@ async def generate_answer(queries: list, vector_store: Chroma):
                 f"- [장소명 : {doc.metadata.get('place_name', '알 수 없음')}] {doc.page_content}"
                 for doc in deduplicated_docs
             ).strip()
-
-            # 리뷰 평점, 리뷰 수에 대해 별점 = 4.52 점(리뷰 268개 기반)과 같은 문구를 포함한 문자열
-            review_info = f"리뷰 평점 = {visitorReviewScore} 점(리뷰 {visitorReviewCount} 개)"
 
             # system_prompt의 {context}, {question} 자리에 각각 context, query를 넣는다.
             prompt = system_prompt.format(

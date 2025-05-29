@@ -1,4 +1,5 @@
 import asyncio
+import json
 from api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
 from crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
 from processing.review_to_json import async_review_to_json
@@ -215,14 +216,17 @@ async def process_category(category: str, x: float, y: float):
         start_time = time.time()
         answers = await openAI_api.generate_answer(place_query_inputs, langchain_vector_store)
         end_time = time.time()
+
         print(f"답변 생성 시간: {end_time - start_time}")
 
         # 각 답변에 대한 AI score 추출
         async def process_answer(place_data, answer):
             try:
-                # AI Score 추출 후, int casting
-                match_AI_score = re.search(r"AI score:\s*(\d+)점", answer)
-                AI_score = int(match_AI_score.group(1)) if match_AI_score else None
+                # AI score을 문자열(str) 형태에서 JSON 형태로 바꾼 후, 점수만 추출한다.
+                AI_score_str = re.search(r'(\{.*?\})', answer, re.DOTALL).group(1)
+                AI_score_str = AI_score_str.replace("```json", "").replace("```", "").strip()
+                AI_score_json = json.loads(AI_score_str)
+                AI_score = AI_score_json.get("AI_score")
 
                 # 해당 장소에 대해 x, y좌표, 영업 정보 등이 들어있는 dictionary를 가져온다.
                 place_info = place_name_to_details.get(place_data["place_name"])
