@@ -78,7 +78,7 @@ uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000
 
 - 응답 예시
   - **store_name**: 장소 이름
-  - **AI_score**: Gemini가 판단한 장소 평가 점수 (0 ~ 100)
+  - **AI_score**: Gemini가 판단한 장소 평가 점수 (0 ~ 10)
   - **x**: 장소의 x 좌표
   - **y**: 장소의 y 좌표
   - **status**: 장소의 현재 영업 정보 (영업 전 / 영업 중 / 영업 종료, etc). 없다면 null.
@@ -89,168 +89,157 @@ uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000
 ```bash
   [
     {
-        "store_name": "포지티브즈",
-        "AI_score": 98,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
+        "store_name": "육림객잔",
+        "AI_score": 9.0,
+        "x": 127.7415547,
+        "y": 37.8742425,
         "status": "영업 종료",
-        "status_description": "12:00에 영업 시작",
+        "status_description": "11:30에 영업 시작",
         "visitorReviewScore": null,
-        "visitorReviewCount": "342",
+        "visitorReviewCount": "55",
         "phone_number": null
     },
     {
-        "store_name": "스타벅스 강원대점",
-        "AI_score": 95,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
+        "store_name": "진미닭갈비 본점",
+        "AI_score": 7.5,
+        "x": 127.7367503,
+        "y": 37.8682037,
         "status": "영업 종료",
-        "status_description": "09:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "3,186",
-        "phone_number": "1522-3232"
+        "status_description": "10:30에 영업 시작",
+        "visitorReviewScore": "4.46",
+        "visitorReviewCount": "807",
+        "phone_number": "033-243-2888"
     },
     {
-        "store_name": "카페 예담더갤러리",
-        "AI_score": 95,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 종료",
-        "status_description": "10:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "337",
-        "phone_number": null
-    },
-    {
-        "store_name": "이스케이프존 강원대1호점",
-        "AI_score": null,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "곧 영업 종료",
-        "status_description": "24:00에 영업 종료",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "42",
-        "phone_number": "033-251-6833"
-    },
-    {
-        "store_name": "위위",
-        "AI_score": 98,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 종료",
-        "status_description": "12:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "113",
-        "phone_number": "070-4216-4516"
-    },
-    {
-        "store_name": "할리스 춘천강원대점",
-        "AI_score": 50,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 중",
-        "status_description": "06:00에 브레이크타임",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "98",
-        "phone_number": "033-253-0425"
-    },
-    {
-        "store_name": "프롬마인드",
-        "AI_score": 99,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 종료",
-        "status_description": "08:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "2,378",
-        "phone_number": null
-    },
-    {
-        "store_name": "스타벅스 춘천후석로DT점",
-        "AI_score": 85,
-        "x": 127.7487156850901,
-        "y": 37.88249358099619,
-        "status": "영업 종료",
-        "status_description": "07:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "240",
-        "phone_number": "1522-3232"
-    },
-    {
-        "store_name": "메가MGC커피 강원대점",
-        "AI_score": 85,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 중",
-        "status_description": "01:00에 영업 종료",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "561",
-        "phone_number": null
-    },
-    {
-        "store_name": "시실리아 커피로스팅 하우스",
-        "AI_score": 98,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 종료",
-        "status_description": "12:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "155",
-        "phone_number": "070-7768-9255"
-    },
-    {
-        "store_name": "아글라오네마",
-        "AI_score": null,
-        "x": 127.7487156850901,
-        "y": 37.88249358099619,
-        "status": "영업 종료",
-        "status_description": "12:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "170",
-        "phone_number": null
-    },
-    {
-        "store_name": "MST",
-        "AI_score": 98,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
+        "store_name": "1.5닭갈비 본점",
+        "AI_score": 9.0,
+        "x": 127.7531309,
+        "y": 37.876346,
         "status": "영업 종료",
         "status_description": "11:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "181",
-        "phone_number": null
+        "visitorReviewScore": "4.46",
+        "visitorReviewCount": "3,622",
+        "phone_number": "033-253-8635"
     },
     {
-        "store_name": "빈티지다락방",
-        "AI_score": 65,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 중",
-        "status_description": "01:00에 영업 종료",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "99",
-        "phone_number": "033-6293-4253"
-    },
-    {
-        "store_name": "쿠프만153",
-        "AI_score": 95,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
-        "status": "영업 중",
-        "status_description": "02:00에 영업 종료",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "243",
-        "phone_number": null
-    },
-    {
-        "store_name": "퍼스트러브",
-        "AI_score": null,
-        "x": 127.7353546951689,
-        "y": 37.87263513844341,
+        "store_name": "브릭스피자",
+        "AI_score": 6.8,
+        "x": 127.7464033,
+        "y": 37.8724044,
         "status": "영업 종료",
-        "status_description": "10:00에 영업 시작",
-        "visitorReviewScore": null,
-        "visitorReviewCount": "22",
+        "status_description": "12:00에 영업 시작",
+        "visitorReviewScore": "4.57",
+        "visitorReviewCount": "571",
+        "phone_number": "033-911-9023"
+    },
+    {
+        "store_name": "중화루",
+        "AI_score": 6.5,
+        "x": 127.7357583,
+        "y": 37.8755742,
+        "status": "영업 종료",
+        "status_description": "11:00에 영업 시작",
+        "visitorReviewScore": "4.39",
+        "visitorReviewCount": "665",
+        "phone_number": "033-254-2591"
+    },
+    {
+        "store_name": "감미옥",
+        "AI_score": 4.5,
+        "x": 127.1228405,
+        "y": 37.4088281,
+        "status": "영업 종료",
+        "status_description": "07:00에 영업 시작",
+        "visitorReviewScore": "4.22",
+        "visitorReviewCount": "4,474",
+        "phone_number": "031-709-9448"
+    },
+    {
+        "store_name": "큰집한우",
+        "AI_score": 7.5,
+        "x": 127.7349257,
+        "y": 37.8778518,
+        "status": "영업 종료",
+        "status_description": "11:00에 영업 시작",
+        "visitorReviewScore": "4.5",
+        "visitorReviewCount": "2,051",
+        "phone_number": "033-241-3944"
+    },
+    {
+        "store_name": "만석식당 강원대점",
+        "AI_score": 8.5,
+        "x": 127.7444784,
+        "y": 37.8733656,
+        "status": null,
+        "status_description": null,
+        "visitorReviewScore": "4.52",
+        "visitorReviewCount": "268",
+        "phone_number": "033-241-5492"
+    },
+    {
+        "store_name": "죽향",
+        "AI_score": 9.5,
+        "x": 127.7393785,
+        "y": 37.8707938,
+        "status": "영업 종료",
+        "status_description": "11:00에 영업 시작",
+        "visitorReviewScore": "4.45",
+        "visitorReviewCount": "371",
+        "phone_number": "033-253-9031"
+    },
+    {
+        "store_name": "봉수닭갈비막국수",
+        "AI_score": 9.0,
+        "x": 127.7435446,
+        "y": 37.8735329,
+        "status": "영업 중",
+        "status_description": "10:10에 라스트오더",
+        "visitorReviewScore": "4.44",
+        "visitorReviewCount": "256",
+        "phone_number": "033-252-8136"
+    },
+    {
+        "store_name": "해안막국수",
+        "AI_score": 8.5,
+        "x": 127.742416,
+        "y": 37.875288,
+        "status": "영업 종료",
+        "status_description": "11:00에 영업 시작",
+        "visitorReviewScore": "4.53",
+        "visitorReviewCount": "202",
+        "phone_number": "033-253-0427"
+    },
+    {
+        "store_name": "착한곱한우곱창 춘천1호점",
+        "AI_score": 8.5,
+        "x": 127.7497161,
+        "y": 37.877809,
+        "status": "영업 종료",
+        "status_description": "17:00에 영업 시작",
+        "visitorReviewScore": "4.51",
+        "visitorReviewCount": "375",
+        "phone_number": "033-252-8872"
+    },
+    {
+        "store_name": "214도넛",
+        "AI_score": 9.0,
+        "x": 127.7402129,
+        "y": 37.8745336,
+        "status": "영업 종료",
+        "status_description": "09:00에 영업 시작",
+        "visitorReviewScore": "4.89",
+        "visitorReviewCount": "1,139",
+        "phone_number": null
+    },
+    {
+        "store_name": "멘시루 춘천점",
+        "AI_score": 7.5,
+        "x": 127.7454931,
+        "y": 37.8728951,
+        "status": null,
+        "status_description": null,
+        "visitorReviewScore": "4.48",
+        "visitorReviewCount": "264",
         "phone_number": null
     }
 ]
