@@ -13,6 +13,7 @@ from langchain_chroma import Chroma
 import re
 import time
 import os
+from haversine import haversine, Unit
 
 import traceback
 
@@ -113,9 +114,17 @@ async def process_category(category: str, x: float, y: float):
                     end_time = time.time()
                     print(f"네이버지도 GraphQL API 시간: {end_time - start_time:.2f}초")
 
+                print(f"{y}, {latitude}, {x}, {longitude}")
+
+                # 현재 좌표 - 해당 장소의 좌표의 거리를 haversine 패키지를 통해 계산한다.
+                current_coordinates = (float(y), float(x))
+                place_coordinates = (float(latitude), float(longitude))
+                distance_km = await asyncio.to_thread(haversine, current_coordinates, place_coordinates, unit = Unit.KILOMETERS)
+
                 place_name_to_details[after_place_name] = {
                     "x": longitude, # x 좌표
                     "y": latitude, # y 좌표
+                    "distance": distance_km, # 현재 좌표에서의 거리
                     "status": status, # 현재 영업 상태 정보
                     "status_description": status_description, # 영업 상태 정보에 대한 설명(description)
                     "visitorReviewScore": visitorReviewScore, # 장소 리뷰 평점
@@ -206,6 +215,7 @@ async def process_category(category: str, x: float, y: float):
         place_query_inputs = {
             place_data['place_name'] : {
                 "query": f"{place_data['place_name']}을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘.",
+                "distance": place_name_to_details.get(place_data["place_name"]).get("distance"),
                 "status_description": place_name_to_details.get(place_data['place_name']).get('status_description'), # 영업 상태 정보에 대한 설명(description)
                 "visitorReviewScore": place_name_to_details.get(place_data['place_name']).get('visitorReviewScore'), # 장소 리뷰 평점
                 "visitorReviewCount": place_name_to_details.get(place_data['place_name']).get('visitorReviewCount') # 장소 리뷰 수
@@ -216,6 +226,8 @@ async def process_category(category: str, x: float, y: float):
         start_time = time.time()
         answers = await openAI_api.generate_answer(place_query_inputs, langchain_vector_store)
         end_time = time.time()
+
+        print(answers)
 
         print(f"답변 생성 시간: {end_time - start_time}")
 

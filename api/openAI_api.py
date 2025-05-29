@@ -40,30 +40,33 @@ import logging # Python 기본 로깅 모듈
 #     print(f"경고: Python 로깅 설정 중 문제 발생: {e_logging_config}")
 
 
-# TODO: 거리 추가, AI score 추가
 system_prompt = """다음 규칙을 반드시 준수하여 답변하세요.
-1. 제공된 '문맥(실제 방문자 리뷰들)'을 분석하여, 해당 장소에 대한 전반적인 긍정 또는 부정 수준을 **AI Score로 평가**합니다.
-2. 부정적인 내용에는 '배달을 하지 않음'과 같은 배달 관련 부정적 리뷰를 포함하여 AI Score 산정 시 종합적으로 고려합니다.
+1. 제공된 '문맥(실제 방문자 리뷰들)'을 분석하여, 해당 장소에 대한 전반적인 긍정 또는 부정 수준을 **AI score로 평가**합니다.
+2. 부정적인 내용에는 '배달을 하지 않음'과 같은 배달 관련 부정적 리뷰를 포함하여 AI score 산정 시 종합적으로 고려합니다.
 3. 답변은 반드시 다음 JSON 형식으로만 제공해야 하며, 다른 내용은 일절 포함하지 않습니다:
 {{
-  "AI_score": 리뷰를 기반으로 산정된 긍정도 점수(float, 0~10점)
+  "AI_score": 리뷰와 거리를 기반으로 산정된 긍정도 점수(float, 0~10점)
 }}
-점수는 소수점도 가능합니다.
-4. '문맥'에 분석할 내용이 있다면, 반드시 그 내용을 기반으로 AI Score를 산정해야 합니다.
-    a. AI Score는 주로 **'문맥'에서 파악된 긍정적 내용의 비중과 만족도**를 반영하여 결정합니다.
-5. '질문'에 명시된 장소 이름과 '문맥'에 있는 [장소명 : ...] 부분이 일치하는 리뷰들을 주로 참조하여 답변합니다. (이는 아래 '현재 분석 대상 장소 정보'의 장소명과도 일치해야 합니다.)
-6. '문맥'이 전혀 제공되지 않았거나, "리뷰 없음"과 같이 분석할 내용이 없는 경우에는 **'AI Score': 0** 으로 답변합니다.
+4. '문맥'에 분석할 내용이 있다면, 반드시 그 내용을 기반으로 AI score를 산정해야 합니다.
+5. 아래에 주어진 **현재 위치로부터의 거리**({distance:.2f} km) 값을 반드시 활용해야 합니다.
+6. 계산된 거리를 AI score에 다음과 같이 반영합니다:
+   - **거리 ≤ 1km**: 위치 접근성이 매우 좋음 → 점수에 +0.5~1.0점 가산 여지를 고려  
+   - **1km < 거리 ≤ 3km**: 접근성 무난함 → 점수 변화 없음  
+   - **거리 > 3km**: 다소 먼 거리 → 점수에 −0.5~1.0점 감점 여지를 고려
+7. '질문'에 명시된 장소 이름과 '문맥'에 있는 [장소명 : ...] 부분이 일치하는 리뷰들을 주로 참조합니다.
+8. '문맥'이 전혀 제공되지 않았거나, "리뷰 없음"과 같이 분석할 내용이 없는 경우에는 **'AI score': 0** 으로 답변합니다.
 
-AI Score 기준:
+AI score 기본 기준:
 - **10점**: 리뷰가 압도적으로 긍정적이며, 매우 높은 만족도를 나타내는 경우
-- **8점**: 리뷰가 대부분 긍정적이며, 일부 사소한 문제만 존재하는 경우
-- **6점**: 리뷰가 전반적으로 긍정적이지만, 명확한 단점 또는 불만족 요소가 다수 존재하는 경우
-- **4점**: 긍정과 부정의 비율이 비슷하거나, 방문자들이 뚜렷한 불만을 자주 표출하는 경우
-- **2점**: 부정적인 리뷰가 대부분이며, 긍정적 요소가 극히 제한적인 경우
-- **0점**: 리뷰가 전부 부정적이거나, 분석할 내용이 아예 없는 경우
+- **8점**: 리뷰가 대부분 긍정적이며, 사소한 문제만 존재하는 경우
+- **6점**: 전반적으로 긍정적이지만, 명확한 단점이 다수 존재하는 경우
+- **4점**: 긍정·부정이 비슷하거나, 종합 불만 요소가 자주 언급되는 경우
+- **2점**: 부정 리뷰가 대부분이며, 긍정 요소가 제한적인 경우
+- **0점**: 리뷰가 전부 부정적이거나, 분석할 내용이 전혀 없는 경우
 
-다음은 현재 분석 대상 장소의 정보입니다. AI Score 산정 시 아래 정보를 참고하십시오:
+다음은 현재 분석 대상 장소의 정보입니다. AI score 산정 시 참고하십시오:
 - 장소명: [{place_name}]
+- 현재 위치로부터 거리: {distance:.2f} km
 
 문맥:
 {context}
@@ -135,16 +138,17 @@ async def generate_answer(queries: list, vector_store: Chroma):
                 for doc in deduplicated_docs
             ).strip()
 
+            # 이전에 haversine 패키지를 통해 계산했던 거리를 가져온다.
+            distance = place_info.get("distance")
+
             # system_prompt의 {context}, {question} 자리에 각각 context, query를 넣는다.
             prompt = system_prompt.format(
                 place_name = place_name,
+                distance = distance,
                 context = context,
                 question = query
             )
 
-            # with open('output.txt', 'a', encoding='utf-8') as f:
-            #     f.write(prompt)
-            #     f.write("="*40)
             return prompt
 
         generate_prompt_tasks = [
@@ -153,9 +157,7 @@ async def generate_answer(queries: list, vector_store: Chroma):
         ]
         prompts = await asyncio.gather(*generate_prompt_tasks)
 
-        # print(prompts)
         results = await llm.abatch(prompts)
-        # print(f"답변 결과: {results}")
 
         return [result.content for result in results]
     
