@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from main import process_category
 import pymysql as sql
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,7 +82,7 @@ async def insert_new_place(placeName: str, userID: str, startDate: str, endDate:
         cursor.execute("insert into place_list (place_name, id, start_date, end_date)\
                         values (%s, %s, %s, %s)", (placeName, userID, startDate, endDate))
         conn.commit()
-        cursor.execute("select * from place_list")
+        cursor.execute("select place_list_id from place_list where id = %s order by place_list_id desc limit 1", userID)
         result = cursor.fetchall()
         return result
     except Exception as e:
@@ -98,6 +98,49 @@ async def get_user_place(userID: str):
         return result
     except Exception as e:
         print(f'error {e}')
+
+@app.post("/insert_place_info")
+async def insert_place_info(request: Request):
+    """
+    사용자가 추가한 추천 여행 경로의 여행지를 추가한다.
+
+    Args:
+        request (Request): 
+                    {
+                        placeListID: 해당 여행지가 포함된 여행
+                        placeName: 여행지 이름
+                        x: 여행지의 x좌표
+                        y: 여행지의 y좌표
+                        order: 여행지의 여행 순서
+                        aiScore: 여행지의 AI 점수
+                        phoneNumber: 여행지의 담당 전화 번호
+                    }
+
+    Returns:
+        _type_: _description_
+    """
+    data = await request.json()
+    cursor.execute("insert into place_info (place_list_id, place_name, x, y, ai_score, phone_number, order_index, day)\
+                   values (%s, %s, %s, %s, %s, %s, %s, %s)", 
+                   (data["placeListID"], data["placeName"], data["x"], data["y"], data["aiScore"], data["phoneNumber"], data["order"], data["day"]))
+    conn.commit()
+    cursor.execute("select * from place_info where place_list_id = %s", data["placeListID"])
+    result = cursor.fetchall()
+    return result
+
+@app.get("/get_place_info")
+async def get_place_info(placeListID: int):
+    print(placeListID)
+    cursor.execute("select * from place_info where place_list_id=%s", placeListID)
+    result = cursor.fetchall()
+    return result
+
+
+@app.post("/init_place_info")
+async def init_place_info(placeListID: int):
+    cursor.execute("delete from place_info where place_list_id=%s", placeListID)
+    conn.commit()
+    return "{message: OK}"
 
 @app.post("/insert_user_info")
 async def insert_user_info(userID: str, userPW: str):
