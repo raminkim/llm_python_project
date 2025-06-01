@@ -1,4 +1,5 @@
 import asyncio
+import json
 from api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
 from crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
 from processing.review_to_json import async_review_to_json
@@ -12,6 +13,7 @@ from langchain_chroma import Chroma
 import re
 import time
 import os
+from haversine import haversine, Unit
 
 import traceback
 
@@ -112,9 +114,17 @@ async def process_category(category: str, x: float, y: float):
                     end_time = time.time()
                     print(f"네이버지도 GraphQL API 시간: {end_time - start_time:.2f}초")
 
+                print(f"{y}, {latitude}, {x}, {longitude}")
+
+                # 현재 좌표 - 해당 장소의 좌표의 거리를 haversine 패키지를 통해 계산한다.
+                current_coordinates = (float(y), float(x))
+                place_coordinates = (float(latitude), float(longitude))
+                distance_km = await asyncio.to_thread(haversine, current_coordinates, place_coordinates, unit = Unit.KILOMETERS)
+
                 place_name_to_details[after_place_name] = {
                     "x": longitude, # x 좌표
                     "y": latitude, # y 좌표
+                    "distance": distance_km, # 현재 좌표에서의 거리
                     "status": status, # 현재 영업 상태 정보
                     "status_description": status_description, # 영업 상태 정보에 대한 설명(description)
                     "visitorReviewScore": visitorReviewScore, # 장소 리뷰 평점
@@ -205,6 +215,7 @@ async def process_category(category: str, x: float, y: float):
         place_query_inputs = {
             place_data['place_name'] : {
                 "query": f"{place_data['place_name']}을 장소명으로 가진 리뷰에서 긍정적인 내용과 부정적인 내용을 찾아서 비율을 알려줘.",
+                "distance": place_name_to_details.get(place_data["place_name"]).get("distance"),
                 "status_description": place_name_to_details.get(place_data['place_name']).get('status_description'), # 영업 상태 정보에 대한 설명(description)
                 "visitorReviewScore": place_name_to_details.get(place_data['place_name']).get('visitorReviewScore'), # 장소 리뷰 평점
                 "visitorReviewCount": place_name_to_details.get(place_data['place_name']).get('visitorReviewCount') # 장소 리뷰 수
@@ -215,14 +226,19 @@ async def process_category(category: str, x: float, y: float):
         start_time = time.time()
         answers = await openAI_api.generate_answer(place_query_inputs, langchain_vector_store)
         end_time = time.time()
+
+        print(answers)
+
         print(f"답변 생성 시간: {end_time - start_time}")
 
         # 각 답변에 대한 AI score 추출
         async def process_answer(place_data, answer):
             try:
-                # AI Score 추출 후, int casting
-                match_AI_score = re.search(r"AI score:\s*(\d+)점", answer)
-                AI_score = int(match_AI_score.group(1)) if match_AI_score else None
+                # AI score을 문자열(str) 형태에서 JSON 형태로 바꾼 후, 점수만 추출한다.
+                AI_score_str = re.search(r'(\{.*?\})', answer, re.DOTALL).group(1)
+                AI_score_str = AI_score_str.replace("```json", "").replace("```", "").strip()
+                AI_score_json = json.loads(AI_score_str)
+                AI_score = AI_score_json.get("AI_score")
 
                 # 해당 장소에 대해 x, y좌표, 영업 정보 등이 들어있는 dictionary를 가져온다.
                 place_info = place_name_to_details.get(place_data["place_name"])
