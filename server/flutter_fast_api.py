@@ -76,7 +76,7 @@ async def insert_new_place(placeName: str, userID: str, startDate: str, endDate:
         endDate (str): 여행 종료 날짜
 
     Returns:
-        _type_: JSON, 장소 정보 추가 여부 반환환
+        _type_: JSON, 장소 정보 추가 여부 반환
     """
     try:
         cursor.execute("insert into place_list (place_name, id, start_date, end_date)\
@@ -135,10 +135,24 @@ async def get_place_info(placeListID: int):
     result = cursor.fetchall()
     return result
 
-
 @app.post("/init_place_info")
 async def init_place_info(placeListID: int):
     cursor.execute("delete from place_info where place_list_id=%s", placeListID)
+
+@app.post("/delete_place_list")
+async def delete_place_list(placeListID: int):
+    """
+    사용자의 여행 일정 리스트 중 하나를 삭제한다.
+
+    Args:
+        placeListID (int): place_list 테이블의 기본 키.
+
+    Returns:
+        str: "{message: OK}"
+    """
+    print(placeListID, type(placeListID))
+    cursor.execute("delete from place_list where place_list_id=%s", (placeListID,))
+    print("삭제된 행 수:", cursor.rowcount)
     conn.commit()
     return "{message: OK}"
 
@@ -189,7 +203,7 @@ async def user_validation(userID: str, userPW: str):
 @app.get("/get_connect_state")
 async def get_connect_state():
     """
-    플러터 앱과 사설 네트워크 서버에 연결되었는지 확인인
+    플러터 앱과 사설 네트워크 서버에 연결되었는지 확인
 
     Returns:
         _type_: _description_
