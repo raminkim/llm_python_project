@@ -30,9 +30,9 @@
        ```bash
        chmod +x package_install.sh
        ```
-    2. **패키지 설치 스크립트 실행**
+    2. **패키지 설치 스크립트 실행 (windows의 경우, git bash에서 실행)**
         ```bash
-         ./lib_install.sh
+         ./package_install.sh
          ```
     3. **(선택) 가상환경 활성화**<br>
         만약 가상환경을 이미 만들어 두셨다면, ```source .venv/bin/activate```을 주석 해제하세요!
