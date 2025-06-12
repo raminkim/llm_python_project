@@ -1,11 +1,11 @@
 import asyncio
 import json
-from api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
-from crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
-from processing.review_to_json import async_review_to_json
-from embeddings_db.initialize_vector_db import initialize_vector_db
+from app.api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
+from app.crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
+from app.processing.review_to_json import async_review_to_json
+from app.embeddings_db.initialize_vector_db import initialize_vector_db
 
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
