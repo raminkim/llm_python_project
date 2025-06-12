@@ -1,0 +1,28 @@
+# cloudbuild.cd.yaml
+# CI를 통과한 이미지를 실제 운영 환경에 배포
+
+steps:
+  # 1. Cloud Run에 최신 버전으로 배포
+  # CI 단계에서 빌드하고 푸시한 이미지를 사용해 Cloud Run 서비스를 업데이트합니다.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/my-repo/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '--region'
+      - 'asia-northeast3'
+      - '--platform'
+      - 'managed'
+      # (핵심) Cloud SQL 데이터베이스 연결 설정
+      # ⚠️ YOUR_GCP_PROJECT_ID를 실제 프로젝트 ID로 꼭 수정해주세요.
+      - '--add-cloudsql-instances=YOUR_GCP_PROJECT_ID:asia-northeast3:my-fastapi-instance'
+      # (핵심) Secret Manager의 모든 secret 정보를 환경 변수로 주입
+      - '--update-secrets=KAKAO_REST_API_KEY=KAKAO_REST_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,NAVER_API_CLIENT_ID=NAVER_API_CLIENT_ID:latest,NAVER_API_CLIENT_SECRET=NAVER_API_CLIENT_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_HOST=db-host:latest,DB_USER=db-user:latest,DB_NAME=db-name:latest'
+      - '--set-env-vars=DB_PORT=3306'
+
+# 이 파일 내에서 사용할 커스텀 변수
+substitutions:
+  _SERVICE_NAME: 'my-fastapi-service'
