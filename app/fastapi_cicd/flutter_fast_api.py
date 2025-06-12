@@ -1,14 +1,15 @@
 from fastapi import FastAPI, Request
-from main import process_category
-import pymysql as sql
+from app.main import process_category
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from contextlib import asynccontextmanager
-import socket
 from starlette.responses import JSONResponse
+from .. import config
+
+
 import time
 import threading
-import os
+import socket
+import pymysql as sql
 
 load_dotenv()
 
@@ -19,7 +20,7 @@ app = FastAPI()
 conn = sql.connect(
     host='127.0.0.1',
     user='root',
-    password=os.getenv("DB_PASSWORD"),
+    password=config.DB_PASSWORD,
     database='route_recommendation',
     charset='utf8mb4',
 )

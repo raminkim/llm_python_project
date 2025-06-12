@@ -1,5 +1,23 @@
-.env
-__pycache__/
-.git/
+# .dockerignore
+
+# Git 관련 파일들
+.git
 .gitignore
+env_sample
+
+# Docker 관련 파일 자체
 Dockerfile
+
+# CI/CD 파이프라인 설계도
+cloudbuild.yaml
+
+# 로컬 환경 변수 파일
+.env
+env_sample
+
+# 셸 스크립트 및 문서
+package_install.sh
+README.md
+
+# Python 가상환경 및 캐시
+__pycache__/
