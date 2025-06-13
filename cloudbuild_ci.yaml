@@ -1,4 +1,3 @@
-# cloudbuild.ci.yaml
 # 코드 품질 검증 및 배포 가능한 아티팩트(Docker 이미지) 생성
 
 steps:
@@ -8,7 +7,7 @@ steps:
     args: 
       - 'build'
       - '-t'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/my-repo/${_SERVICE_NAME}:$COMMIT_SHA'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$COMMIT_SHA'
       - '.'
   
   # 2. 빌드된 이미지를 Artifact Registry에 업로드
@@ -16,11 +15,11 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: 
       - 'push'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/my-repo/${_SERVICE_NAME}:$COMMIT_SHA'
+      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$COMMIT_SHA'
 
 # 빌드 결과물로 생성된 이미지의 전체 경로
 images:
-  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/my-repo/${_SERVICE_NAME}:$COMMIT_SHA'
+  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$COMMIT_SHA'
 
 # 이 파일 내에서 사용할 커스텀 변수
 substitutions:
