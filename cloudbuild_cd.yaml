@@ -37,7 +37,7 @@ steps:
       - --platform
       - managed
       - --service-account=tripout-runner@${PROJECT_ID}.iam.gserviceaccount.com
-      - --add-cloudsql-instances=tripout-project:$_REGION:my-fastapi-instance
+      - --add-cloudsql-instances=tripout-project:asia-northeast3:tripout-instance
       - --update-secrets=KAKAO_REST_API_KEY=KAKAO_REST_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,NAVER_API_CLIENT_ID=NAVER_API_CLIENT_ID:latest,NAVER_API_CLIENT_SECRET=NAVER_API_CLIENT_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_HOST=DB_HOST:latest,DB_USER=DB_USER:latest,DB_NAME=DB_NAME:latest
       - --set-env-vars=DB_PORT=3306
       - --allow-unauthenticated

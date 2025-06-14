@@ -14,11 +14,19 @@ load_dotenv()
 app = FastAPI()
 
 def is_cloud_run():
-    return bool(os.getenv("K_SERVICE"))
+    return os.getenv("K_SERVICE") is not None  # Cloud Run 환경 변수
 
-# 환경에 따라 privateIP 분기 처리
+# 환경에 따라 privateIP 분기 처리 및 DB 연결
 if is_cloud_run():
     privateIP = os.getenv("SERVICE_URL", "https://your-cloud-run-url.run.app/")
+
+    conn = sql.connect(
+        unix_socket=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        charset="utf8mb4"
+    )
 else:
     try:
         hostname = socket.gethostname()
@@ -26,14 +34,13 @@ else:
     except Exception:
         privateIP = "http://127.0.0.1:8000/"
 
-# DB 연결 설정
-conn = sql.connect(
-    host=os.getenv("DB_HOST"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    database=os.getenv("DB_NAME"),
-    charset='utf8mb4',
-)
+    conn = sql.connect(
+        host=os.getenv("DB_HOST", "127.0.0.1"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        charset='utf8mb4',
+    )
 
 cursor = conn.cursor()
 
