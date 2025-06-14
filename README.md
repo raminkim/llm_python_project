@@ -1,63 +1,80 @@
 # FastAPI 기반 Flutter 연동 서버 (Python 구현)
 
-##  프로젝트 소개
-이 프로젝트는 LLM을 활용한 여행 경로 추천 앱 'TripOut'을 위해 개발된 Python FastAPI 서버입니다.
+# 프로젝트 소개
 
-<a href = "https://rustic-cave-d05.notion.site/LLM_python_project-1df41e3234ba802a9548d05fea3fc885?pvs=74">프로젝트 파일 구조</a>
+이 프로젝트는 **LLM**을 활용한 여행 경로 추천 앱 **'TripOut'**을 위한 Python FastAPI 서버입니다.
 
-## 📅 만든 기간
-- 2025.03.29(토) ~ 
-  
+- [프로젝트 파일 구조 바로가기](https://rustic-cave-d05.notion.site/LLM_python_project-1df41e3234ba802a9548d05fea3fc885?pvs=74)
+
+---
+
+## 📅 개발 기간
+
+- **2025.03.29(토) ~ (진행 중)**
+
+---
+
 ## 💻 개발 환경
-- **Python Version**: 3.10.16
-- **Framework**: FastAPI Version 0.115.12
+
+- **Python**: 3.10.16
+- **Framework**: FastAPI 0.115.12
 - **IDE**: Visual Studio Code
 - **Web Server (ASGI)**: Uvicorn
 
-## 시작하기
+---
 
-이 섹션에서는 FastAPI 서버를 로컬 환경에서 실행하고 사용하는 방법을 설명합니다.
+## 🚀 시작하기
+
+FastAPI 서버를 로컬 환경에서 실행하는 방법을 안내합니다.
 
 ### 1. 필수 조건
 
-- **Python  3.10.16** 설치: ([https://www.python.org/downloads/](https://www.python.org/downloads/))
-  FastAPI 서버를 실행하기 위한 Python 환경이 필요합니다. 개발에 3.10.16 버전을 사용하여 해당 버전으로 기술하였습니다.
+- **Python 3.10.16**  
+  [공식 다운로드 링크](https://www.python.org/downloads/)  
+  (개발은 3.10.16 버전 기준입니다.)
 
-- **pip** (Python 패키지 관리자) 설치: Python 패키지를 설치하고 관리하는 데 사용됩니다. \n Python 설치 시 함께 설치되는 경우가 많습니다.
-  - 패키지 설치를 돕는 'package_install' 실행 방법
+- **pip**  
+  Python 패키지 관리자. 대부분 Python 설치 시 자동 포함됩니다.
 
-    1. **실행 권한 부여**  
-       ```bash
-       chmod +x package_install.sh
-       ```
-    2. **패키지 설치 스크립트 실행 (windows의 경우, git bash에서 실행)**
+- **외부 API KEY**  
+    - OpenAI API KEY  
+    - KakaoMap API KEY  
+    - Naver API KEY
+
+- **패키지 설치 스크립트(`package_install.sh`) 사용법**
+    1. **실행 권한 부여**
         ```bash
-         ./package_install.sh
-         ```
-    3. **(선택) 가상환경 활성화**<br>
-        만약 가상환경을 이미 만들어 두셨다면, ```source .venv/bin/activate```을 주석 해제하세요!
+        chmod +x package_install.sh
+        ```
+    2. **패키지 설치 (Windows의 경우, Git Bash 등에서 실행)**
+        ```bash
+        ./package_install.sh
+        ```
+    3. **(선택) 가상환경 활성화**
+        - 이미 가상환경이 있다면 아래 명령어를 실행하세요.
+            ```bash
+            source .venv/bin/activate
+            ```
 
-- **외부 API KEY**: 프로젝트에서 사용하는 외부 API 키가 필요합니다.
-  - **OpenAI API KEY**
-  - **KakaoMap API KEY**
-  - **Naver API KEY**
+---
 
+### 2. 환경 변수 세팅
 
-## 실행 방법
-### 1. 세팅
+1. **환경 변수 파일 생성**  
+    `env_sample` 파일을 복사해서 `.env` 파일로 이름을 변경하세요.
 
-(1) **환경 변수 파일 생성** : env_sample 파일을 복사해 .env 파일로 이름을 변경
+2. **.env 파일 편집**  
+    필요한 API KEY 값을 `.env`에 입력합니다.
 
-(2) **.env 파일의 API 키 채우기**
+---
 
-### 2. 서버 실행 방법
+### 3. FastAPI 서버 실행
+
+아래 명령어로 서버를 실행하세요:
+
 ```bash
-uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000
+uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000\
 ```
-
-### 3. 서버 종료 방법
-`ctrl + c`
-
 
 ### 특정 좌표 주변 카테고리 장소 리뷰 분석 API 가이드
 
