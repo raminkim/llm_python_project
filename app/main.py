@@ -1,19 +1,20 @@
 import asyncio
 import json
-from api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
-from crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
-from processing.review_to_json import async_review_to_json
-from embeddings_db.initialize_vector_db import initialize_vector_db
+from .api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
+from .crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
+from .processing.review_to_json import async_review_to_json
+from .embeddings_db.initialize_vector_db import initialize_vector_db
 
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+from haversine import haversine, Unit
 
 import re
 import time
-import os
-from haversine import haversine, Unit
+import config
+
 
 import traceback
 
@@ -25,7 +26,7 @@ NAVER_SEMAPHORE = asyncio.Semaphore(4)  # 네이버지도 호출을 동시성으
 async def initialize_chroma() -> Chroma:
     start_time = time.time()
     # 쿼리 임베딩용 모델
-    query_embedding_function = await asyncio.to_thread(OpenAIEmbeddings, model = "text-embedding-3-small", openai_api_key = os.getenv("OPENAI_API_KEY"))
+    query_embedding_function = await asyncio.to_thread(OpenAIEmbeddings, model = "text-embedding-3-small", openai_api_key = config.OPENAI_API_KEY)
 
     # generate_answer 함수에 전달할 langchain_vector_store 객체
     langchain_vector_store = await asyncio.to_thread(Chroma, collection_name = "review_collection_chroma", embedding_function = query_embedding_function)
@@ -47,7 +48,7 @@ async def process_category(category: str, x: float, y: float):
     chroma_init_task = asyncio.create_task(initialize_chroma())
 
     # OpenAI client 정의
-    client = AsyncOpenAI(api_key = os.getenv("OPENAI_API_KEY"))
+    client = AsyncOpenAI(api_key = config.OPENAI_API_KEY)
 
     start_time = time.time()
     search_result = await asyncio.to_thread(kakaomap_rest_api.search_by_category, x, y, category, 15)

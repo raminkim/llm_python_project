@@ -1,9 +1,11 @@
+from .. import config
+
 import requests
 import os
 
 def transform_coordinates(longitude, latitude):
     url = 'https://dapi.kakao.com/v2/local/geo/coord2regioncode.json'
-    headers = {'Authorization': f'KakaoAK {os.getenv("KAKAO_REST_API_KEY")}'}
+    headers = {'Authorization': f'KakaoAK {config.KAKAO_REST_API_KEY}'}
     params = {'x': longitude, 'y': latitude}
     
     response = requests.get(url, headers=headers, params=params)

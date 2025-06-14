@@ -1,10 +1,10 @@
-import requests
-import os
+from .. import config
 
+import requests
 
 def search_by_category(longitude, latitude, category_code, size=15):
     url = 'https://dapi.kakao.com/v2/local/search/category.json'
-    headers = {'Authorization': f'KakaoAK {os.getenv("KAKAO_REST_API_KEY")}'}
+    headers = {'Authorization': f'KakaoAK {config.KAKAO_REST_API_KEY}'}
     params = {
         'category_group_code': category_code,
         'x': longitude,

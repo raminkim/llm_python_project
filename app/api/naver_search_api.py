@@ -1,3 +1,5 @@
+from .. import config
+
 import requests
 import os
 
@@ -7,8 +9,8 @@ def naver_search_api(keyword):
     enc_query = quote(keyword)  # 검색어를 URL 인코딩합니다.
     url = f'https://openapi.naver.com/v1/search/local.json?query={enc_query}&display=5'
     headers = {
-         "X-Naver-Client-Id": os.getenv("NAVER_API_CLIENT_ID"),
-        "X-Naver-Client-Secret": os.getenv("NAVER_API_CLIENT_SECRET")
+        "X-Naver-Client-Id": config.NAVER_API_CLIENT_ID,
+        "X-Naver-Client-Secret": config.NAVER_API_CLIENT_SECRET
     }
 
     try:
