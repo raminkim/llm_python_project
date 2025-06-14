@@ -1,26 +1,26 @@
-# 코드 품질 검증 및 배포 가능한 아티팩트(Docker 이미지) 생성
+# CI 파이프라인: 코드 품질 검증 및 배포 가능한 아티팩트(Docker 이미지) 생성
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _SERVICE_NAME: 'my-fastapi-service'
+  _REGION: 'asia-northeast3'
 
 steps:
-  # 1. Docker 이미지 빌드
-  # 현재 폴더의 Dockerfile을 사용해, 우리 앱을 컨테이너 이미지로 만듭니다.
   - name: 'gcr.io/cloud-builders/docker'
+    id: Build Docker image
     args: 
       - 'build'
       - '-t'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$SHORT_SHA'
       - '.'
-  
-  # 2. 빌드된 이미지를 Artifact Registry에 업로드
-  # 나중에 Cloud Run이 사용할 수 있도록, 빌드된 이미지를 GCP의 이미지 저장소에 푸시합니다.
+
   - name: 'gcr.io/cloud-builders/docker'
+    id: Push Docker image
     args: 
       - 'push'
-      - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$SHORT_SHA'
 
-# 빌드 결과물로 생성된 이미지의 전체 경로
 images:
-  - 'asia-northeast3-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$COMMIT_SHA'
-
-# 이 파일 내에서 사용할 커스텀 변수
-substitutions:
-  _SERVICE_NAME: 'my-fastapi-service'
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/tripout-repo/${_SERVICE_NAME}:$SHORT_SHA'
