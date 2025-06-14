@@ -73,7 +73,7 @@ FastAPI 서버를 로컬 환경에서 실행하는 방법을 안내합니다.
 아래 명령어로 서버를 실행하세요:
 
 ```bash
-uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000\
+uvicorn server.flutter_fast_api:app --reload --host=0.0.0.0 --port 8000
 ```
 
 ### 특정 좌표 주변 카테고리 장소 리뷰 분석 API 가이드
