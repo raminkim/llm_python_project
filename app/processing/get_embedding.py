@@ -1,5 +1,4 @@
 import traceback
-from openai import OpenAI
 from openai import AsyncOpenAI
 
 
