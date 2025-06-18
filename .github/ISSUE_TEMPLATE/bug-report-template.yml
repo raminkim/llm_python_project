@@ -1,12 +1,3 @@
----
-name: Bug Report Template
-about: 버그 리포트 이슈 템플릿
-title: ''
-labels: ''
-assignees: ''
-
----
-
 name: "🐛 Bug"
 description: "버그 신고"
 labels: ["bug"]

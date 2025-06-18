@@ -1,12 +1,3 @@
----
-name: Performance/Code Improvement Template
-about: 성능 개선 및 리팩토링 템플릿
-title: ''
-labels: ''
-assignees: ''
-
----
-
 name: "🚀 Improvement"
 description: "성능 개선 및 리팩토링"
 labels: ["improvement"]
