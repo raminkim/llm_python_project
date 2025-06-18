@@ -7,13 +7,13 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.retrievers import SelfQueryRetriever
 from langchain.chains.query_constructor.base import AttributeInfo
+from .. import config
+
 import lark
 import os
 import traceback
 
 
-
-import langchain
 import logging # Python 기본 로깅 모듈
 
 
@@ -92,7 +92,7 @@ async def generate_answer(queries: list, vector_store: Chroma):
         llm = ChatGoogleGenerativeAI(
             model = "gemini-2.0-flash",
             temperature = 0,
-            api_key = os.getenv("GEMINI_API_KEY")
+            api_key = config.GEMINI_API_KEY
         )
 
         document_contents_description = "A collection of user reviews for various places, primarily restaurants and cafes. Each review talks about user experiences, food, service, atmosphere, etc."

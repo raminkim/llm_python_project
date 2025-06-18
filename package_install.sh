@@ -17,6 +17,7 @@ pip install \
   lark \
   langchain-community \
   langchain-openai \
+  langchain_google_genai \
   langchain-chroma \
   pymysql \
   haversine

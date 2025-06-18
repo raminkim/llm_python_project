@@ -3,7 +3,7 @@ import os
 import sys
 import traceback
 import time
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI
 
 # 프로젝트 루트 디렉토리를 sys.path에 추가
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
