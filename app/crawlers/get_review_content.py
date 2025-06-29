@@ -23,7 +23,7 @@ async def async_request_review_graphql(place_id):
                 "businessId": place_id,
                 "businessType": "restaurant",
                 "item": "0",
-                "page": 5,
+                "page": 1,
                 "size": 10,
                 "isPhotoUsed": False,
                 "sort": "recent",
@@ -224,7 +224,7 @@ def request_place_id_graphql(keyword: str, x, y):
 
                 # 응답 텍스트를 비동기적으로 읽어옴
                 html_content = response.content.decode('utf-8')
-                # # # 디버깅용 (html_content 출력)
+                # # 디버깅용 (html_content 출력)
                 # with open('html_content.txt', 'a', encoding='utf-8') as f:
                 #     f.write(html_content+"\n")
                 #     f.write("="*40+"\n")
@@ -273,4 +273,18 @@ async def async_parse_review_content(json_data):
 if __name__ == '__main__':
     x = "127.727872"
     y = "37.905947"
-    request_place_id_graphql("만석식당 강원대점", x, y)
+    # request_place_id_graphql 는 8개의 값을 반환하므로 그에 맞춰 할당합니다.
+    place_id_str, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = request_place_id_graphql("천시 효자동 롯데리아 강원대학점", x, y)
+
+    # 비동기 함수 실행 예시 (테스트 용):
+    async def test():
+        review_json = await async_request_review_graphql(place_id_str)
+        print("\n=== 원본 GraphQL 응답 중 일부 미리보기 ===")
+        print(str(review_json)[:500])  # 너무 길지 않도록 앞부분만 출력
+
+        reviews = await async_parse_review_content(review_json)
+        print("\n=== 추출한 리뷰 리스트 ===")
+        for r in reviews:
+            print("-", r)
+
+    asyncio.run(test())

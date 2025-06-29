@@ -1,6 +1,6 @@
 import asyncio
 import json
-from .api import naver_search_api, openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
+from .api import openAI_api, kakaomap_transfrom_address, kakaomap_rest_api
 from .crawlers.get_review_content import async_request_review_graphql, async_parse_review_content, request_place_id_graphql
 from .processing.review_to_json import async_review_to_json
 from .embeddings_db.initialize_vector_db import initialize_vector_db
@@ -85,42 +85,60 @@ async def process_category(category: str, x: float, y: float):
                 # 카카오 REST API를 이용해 받아온 json을 기반해 X, Y 좌표를 바꾸기.
                 place_x, place_y = documents['x'], documents['y']
 
-                # 네이버 지역 검색 API 기준의 place name 받아오기
+                # 네이버 검색 API를 사용하지 않고 다양한 후보 키워드로 네이버 지도 GraphQL 을 조회합니다.
+                candidate_keywords = [
+                    before_place_name,  # 가장 단순한 형태
+                    f"{region_3depth_name} {before_place_name}",
+                    f"{region_2depth_name} {region_3depth_name} {before_place_name}",
+                ]
 
-                async with NAVER_API_SEMAPHORE:
-                    await asyncio.sleep(REQUEST_INTERVAL_NAVER)  # 네이버 API 호출 간격 조정
+                place_id = status = status_description = visitorReviewScore = visitorReviewCount = phone_number = latitude = longitude = None
 
-                    start_time = time.time()
-                    items = await asyncio.to_thread(naver_search_api.naver_search_api, f'{region_2depth_name} {region_3depth_name} {before_place_name}')
-                    end_time = time.time()
-                    print(f"네이버 지역 검색 API 시간: {end_time - start_time:.2f}초")
-                    print(f"네이버 지역 검색 API 결과: {type(items)}, {items}")
+                for kw in candidate_keywords:
+                    async with NAVER_SEMAPHORE:
+                        await asyncio.sleep(REQUEST_INTERVAL_NAVER)
 
-                # items가 비어있다면, 검색 결과가 없는 것이므로 None을 반환.
-                if not items:
-                    print("naver 검색 api의 검색 결과가 없습니다.")
-                    return None
-                
-                # <b></b> 등 html 태그 제거
-                after_place_name = re.sub(r"<[^>]+>", "", items['items'][0]['title'])
-                print(f"html 태그를 제거한 결과값: {after_place_name}")
+                        start_time = time.time()
+                        (
+                            place_id,
+                            status,
+                            status_description,
+                            visitorReviewScore,
+                            visitorReviewCount,
+                            phone_number,
+                            latitude,
+                            longitude,
+                        ) = await asyncio.to_thread(
+                            request_place_id_graphql,
+                            kw,
+                            place_x,
+                            place_y,
+                        )
+                        end_time = time.time()
+                        print(
+                            f"[키워드: {kw}] 네이버지도 GraphQL API 시간: {end_time - start_time:.2f}초, place_id: {place_id}"
+                        )
 
-                # 네이버지도 GraphQL API를 이용해 장소 ID, 영업 상태 정보, 영업 상태 정보에 대한 설명(description), 장소 리뷰 평점, 장소 리뷰 수, 전화번호, 위도, 경도를 받아오기
+                    # place_id 를 찾았으면 해당 키워드를 after_place_name 으로 채택하고 루프 탈출
+                    if place_id:
+                        after_place_name = kw
+                        break
 
-                async with NAVER_SEMAPHORE:
-                    await asyncio.sleep(REQUEST_INTERVAL_NAVER)
+                # place_id 가 끝까지 없으면 after_place_name 은 원본으로 설정
+                if not place_id:
+                    after_place_name = before_place_name
+                    print("place_id 를 찾지 못했습니다. 이후 단계에서 리뷰 정보가 없을 수 있습니다.")
 
-                    start_time = time.time()
-                    place_id, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = await asyncio.to_thread(request_place_id_graphql, after_place_name, place_x, place_y)
-                    end_time = time.time()
-                    print(f"네이버지도 GraphQL API 시간: {end_time - start_time:.2f}초")
-
-                print(f"{y}, {latitude}, {x}, {longitude}")
-
-                # 현재 좌표 - 해당 장소의 좌표의 거리를 haversine 패키지를 통해 계산한다.
-                current_coordinates = (float(y), float(x))
-                place_coordinates = (float(latitude), float(longitude))
-                distance_km = await asyncio.to_thread(haversine, current_coordinates, place_coordinates, unit = Unit.KILOMETERS)
+                # 위도/경도가 없으면 거리 계산은 생략하고 None 으로 표시합니다.
+                if latitude is None or longitude is None:
+                    print("위도 또는 경도를 받아오지 못해 거리 계산을 생략합니다.")
+                    distance_km = None
+                else:
+                    print(f"{y}, {latitude}, {x}, {longitude}")
+                    # 현재 좌표 - 해당 장소의 좌표의 거리를 haversine 패키지를 통해 계산한다.
+                    current_coordinates = (float(y), float(x))
+                    place_coordinates = (float(latitude), float(longitude))
+                    distance_km = await asyncio.to_thread(haversine, current_coordinates, place_coordinates, unit = Unit.KILOMETERS)
 
                 place_name_to_details[after_place_name] = {
                     "x": longitude, # x 좌표
@@ -151,11 +169,16 @@ async def process_category(category: str, x: float, y: float):
 
                     print(f"{after_place_name} 리뷰 리스트 출력: {review_list}")
 
-                    # 리뷰 데이터값 -> JSON으로 바꿔 리스트화 시키기
-                    start_time = time.time()
-                    review_jsons = await async_review_to_json(review_list, client)
-                    end_time = time.time()
-                    print(f"json으로 바꿔 리스트화 시키는데 걸린 시간: {end_time - start_time:.2f}")
+                    # 리뷰가 없으면 JSON 변환을 건너뜀
+                    if not review_list:
+                        print(f"{after_place_name} 리뷰가 없어 JSON 변환을 생략합니다.")
+                        review_jsons = []
+                    else:
+                        start_time = time.time()
+                        print(f"{after_place_name} 리뷰 데이터값 -> JSON으로 바꿔 리스트화 시키기: {review_list}")
+                        review_jsons = await async_review_to_json(review_list, client)
+                        end_time = time.time()
+                        print(f"json으로 바꿔 리스트화 시키는데 걸린 시간: {end_time - start_time:.2f}")
 
                     return {"place_name": after_place_name, "reviews": review_jsons}
 

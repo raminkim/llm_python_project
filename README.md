@@ -59,7 +59,6 @@ FastAPI 서버를 로컬 환경에서 실행하는 방법을 안내합니다.
 - **외부 API KEY**: 프로젝트에서 사용하는 외부 API 키가 필요합니다.
   - **OpenAI API KEY**
   - **KakaoMap API KEY**
-  - **Naver API KEY**
   - **Gemini API KEY**
 
 ### 2. 환경 변수 세팅
