@@ -178,3 +178,6 @@ cython_debug/
 
 # cursorignore file
 .cursorignore
+
+# 디버깅 로그
+html_content.txt

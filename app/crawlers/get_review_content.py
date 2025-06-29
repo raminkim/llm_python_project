@@ -225,9 +225,9 @@ def request_place_id_graphql(keyword: str, x, y):
                 # 응답 텍스트를 비동기적으로 읽어옴
                 html_content = response.content.decode('utf-8')
                 # # 디버깅용 (html_content 출력)
-                with open('html_content.txt', 'a', encoding='utf-8') as f:
-                    f.write(html_content+"\n")
-                    f.write("="*40+"\n")
+                # with open('html_content.txt', 'a', encoding='utf-8') as f:
+                #     f.write(html_content+"\n")
+                #     f.write("="*40+"\n")
                 
                 # HTML에서 필요한 데이터를 추출하는 함수롤 호출한다. 이때, 이 함수는 CPU 바운드 작업이므로, asyncio.to_thread를 사용하여 비동기적으로 실행한다.
                 error_message, place_id_str, status, status_description, visitorReviewScore, visitorReviewCount, phone_number, latitude, longitude = parse_and_extract_data_from_html(html_content)
