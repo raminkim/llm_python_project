@@ -175,3 +175,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# cursorignore file
+.cursorignore
+
+# 디버깅 로그
+html_content.txt
